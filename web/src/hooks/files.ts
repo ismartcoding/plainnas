@@ -1,0 +1,321 @@
+import { ref, type Ref } from 'vue'
+import type { ApolloCache, ApolloError } from '@apollo/client/core'
+import { createCopyTaskGQL, createDirGQL, createMoveTaskGQL, initMutation, renameFileGQL } from '@/lib/api/mutation'
+import { enrichFile, isAudio, isImage, isVideo, type IFile } from '@/lib/file'
+import { initQuery, storageVolumesGQL } from '@/lib/api/query'
+import { useI18n } from 'vue-i18n'
+import toast from '@/components/toaster'
+import { download, encryptUrlParams, getFileId, getFileName, getFileUrl, getFileUrlByPath } from '@/lib/api/file'
+import type { ISource } from '@/components/lightbox/types'
+import { encodeBase64 } from '@/lib/strutil'
+import { buildQuery, parseQuery, type IFilterField } from '@/lib/search'
+import { findIndex, remove } from 'lodash-es'
+import { getApiBaseUrl } from '@/lib/api/api'
+import type { IApp, IFileFilter, IStorageVolume } from '@/lib/interfaces'
+import type sjcl from 'sjcl'
+import { sortStorageVolumesByTitle } from '@/lib/volumes'
+import { useTasksStore } from '@/stores/tasks'
+
+export const useCreateDir = (urlTokenKey: Ref<sjcl.BitArray | null>, items: Ref<IFile[]>) => {
+  const createPath = ref('')
+
+  return {
+    createPath,
+    createVariables(value: string) {
+      return { path: createPath.value + '/' + value }
+    },
+    createMutation() {
+      return initMutation({
+        document: createDirGQL,
+        options: {
+          update: async (_: ApolloCache<any>, data: any) => {
+            const d = data.data.createDir
+            remove(items.value, (it: IFile) => it.path === d.path)
+            items.value.unshift(enrichFile(d, urlTokenKey.value))
+          },
+        },
+      })
+    },
+  }
+}
+
+export const useRename = (fetch: () => void) => {
+  const renameItem = ref<IFile>()
+  return {
+    renameItem,
+    renameDone(newName: string) {
+      fetch()
+    },
+    renameMutation() {
+      return initMutation({
+        document: renameFileGQL,
+      })
+    },
+    renameVariables(value: string) {
+      return { path: renameItem.value?.path, name: value }
+    },
+  }
+}
+
+export const useVolumes = () => {
+  const { t } = useI18n()
+  const volumes = ref<IStorageVolume[]>([])
+  const { refetch } = initQuery({
+    handle: (data: { storageVolumes: IStorageVolume[] }, error: string) => {
+      if (!error) {
+        volumes.value = sortStorageVolumesByTitle(data.storageVolumes ?? [], t)
+      }
+    },
+    document: storageVolumesGQL,
+  })
+
+  return { volumes, refetch }
+}
+
+export const useDownload = (urlTokenKey: Ref<sjcl.BitArray | null>) => {
+  return {
+    async downloadFile(path: string, fileName?: string) {
+      const url = getFileUrlByPath(urlTokenKey.value, path)
+      if (fileName) {
+        download(url + `&dl=1&name=${fileName}`, fileName)
+      } else {
+        download(url + '&dl=1', getFileName(path))
+      }
+    },
+    async downloadDir(path: string, fileName?: string) {
+      const id = getFileId(urlTokenKey.value, path)
+      const url = `${getApiBaseUrl()}/zip/dir?id=${encodeURIComponent(id)}`
+      if (fileName) {
+        download(url + `&name=${fileName}`, fileName)
+      } else {
+        download(url, getFileName(path))
+      }
+    },
+    downloadFiles(key: string) {
+      const id = encryptUrlParams(
+        urlTokenKey.value,
+        JSON.stringify({
+          id: key,
+          type: 'FILE',
+          name: '',
+        })
+      )
+
+      download(`${getApiBaseUrl()}/zip/files?id=${encodeURIComponent(id)}`, '')
+    },
+  }
+}
+
+export const useView = (sources: Ref<ISource[]>, ivView: (sources: ISource[], i: number) => void) => {
+  return {
+    view(items: IFile[], f: IFile) {
+      sources.value = items
+        .filter((it) => isImage(it.name) || isVideo(it.name) || isAudio(it.name))
+        .map((it) => ({
+          path: it.path,
+          src: it.fileId ? getFileUrl(it.fileId) : '',
+          name: getFileName(it.path),
+          size: it.size,
+          duration: 0,
+          data: f,
+        }))
+      const index = findIndex(sources.value, (it: ISource) => it.path === f.path)
+      ivView(sources.value, index)
+    },
+  }
+}
+
+export const useCopyPaste = (items: Ref<IFile[]>, isCut: Ref<boolean>, selectedFiles: Ref<IFile[]>, refetchFiles: () => void, refetchStats: () => void) => {
+  const dstDir = ref<string>()
+
+  const tasksStore = useTasksStore()
+
+  const {
+    mutate: copyMutate,
+    loading: copyLoading,
+    onDone: copyDone,
+    onError: copyError,
+  } = initMutation({
+    document: createCopyTaskGQL,
+  })
+
+  const {
+    mutate: cutMutate,
+    loading: cutLoading,
+    onDone: cutDone,
+    onError: cutError,
+  } = initMutation({
+    document: createMoveTaskGQL,
+  })
+
+  const { t } = useI18n()
+
+  const onError = (error: ApolloError) => {
+    toast(t(error.message))
+  }
+
+  copyError(onError)
+  cutError(onError)
+
+  const onDone = (result: any) => {
+    const task = result?.data?.createCopyTask ?? result?.data?.createMoveTask
+    if (task) {
+      tasksStore.upsertFileTask(task)
+    }
+
+    selectedFiles.value = []
+
+    // Keep existing behavior: refetch soon, and websocket-driven task progress handles UI feedback.
+    setTimeout(() => {
+      refetchFiles()
+      refetchStats()
+    }, 500)
+  }
+
+  copyDone(onDone)
+  cutDone(onDone)
+
+  return {
+    loading: copyLoading || cutLoading,
+    canPaste() {
+      return selectedFiles.value.length > 0
+    },
+    copy(ids: string[]) {
+      selectedFiles.value = items.value.filter((it) => ids.includes(it.id))
+      isCut.value = false
+    },
+    cut(ids: string[]) {
+      selectedFiles.value = items.value.filter((it) => ids.includes(it.id))
+      isCut.value = true
+    },
+    paste(dir: string) {
+      dstDir.value = dir
+      const ops = selectedFiles.value.map((file) => ({
+        src: file.path,
+        dst: dir + '/' + file.name,
+        overwrite: false,
+      }))
+      if (isCut.value) {
+        cutMutate({ ops })
+      } else {
+        copyMutate({ ops })
+      }
+    },
+  }
+}
+
+export function getFileDir(fileName: string) {
+  let dir = 'Documents'
+  if (isImage(fileName)) {
+    dir = 'Pictures'
+  } else if (isVideo(fileName)) {
+    dir = 'Movies'
+  } else if (isAudio(fileName)) {
+    dir = 'Music'
+  }
+  return dir
+}
+
+export const useDownloadItems = (urlTokenKey: Ref<sjcl.BitArray | null>, type: string, clearSelection: () => void, fileName: string | (() => string)) => {
+  const { t } = useI18n()
+
+  return {
+    downloadItems: (realAllChecked: boolean, ids: string[], query: string) => {
+      let q = query
+      if (!realAllChecked) {
+        if (ids.length === 0) {
+          toast(t('select_first'), 'error')
+          return
+        }
+        q = `ids:${ids.join(',')}`
+      }
+
+      // Generate dynamic filename if function is provided
+      const finalFileName = typeof fileName === 'function' ? fileName() : fileName
+
+      const id = encryptUrlParams(
+        urlTokenKey.value,
+        JSON.stringify({
+          query: q,
+          type: type,
+          name: finalFileName,
+        })
+      )
+      download(`${getApiBaseUrl()}/zip/files?id=${encodeURIComponent(id)}`, finalFileName)
+      clearSelection()
+    },
+  }
+}
+
+export const useSearch = () => {
+  return {
+    parseQ: (filter: IFileFilter, q: string) => {
+      const fields = parseQuery(q)
+      filter.showHidden = false
+      filter.text = ''
+      filter.rootPath = ''
+      filter.relativePath = ''
+      filter.trash = false
+      fields.forEach((it) => {
+        if (it.name === 'text') {
+          filter.text = it.value
+        } else if (it.name === 'type') {
+          filter.type = it.value
+        } else if (it.name === 'root_path') {
+          filter.rootPath = it.value
+        } else if (it.name === 'relative_path') {
+          filter.relativePath = it.value
+        } else if (it.name === 'show_hidden') {
+          filter.showHidden = it.value === 'true'
+        } else if (it.name === 'trash') {
+          filter.trash = it.value === 'true'
+        }
+      })
+    },
+    buildQ: (filter: IFileFilter): string => {
+      const fields: IFilterField[] = []
+
+      if (filter.text !== '') {
+        fields.push({
+          name: 'text',
+          op: '',
+          value: filter.text,
+        })
+      }
+
+      if (filter.rootPath !== '') {
+        fields.push({
+          name: 'root_path',
+          op: '',
+          value: filter.rootPath,
+        })
+      }
+
+      if (filter.relativePath !== undefined && filter.relativePath !== '') {
+        fields.push({
+          name: 'relative_path',
+          op: '',
+          value: filter.relativePath,
+        })
+      }
+
+      if (filter.showHidden) {
+        fields.push({
+          name: 'show_hidden',
+          op: '',
+          value: filter.showHidden ? 'true' : 'false',
+        })
+      }
+
+      if (filter.trash) {
+        fields.push({
+          name: 'trash',
+          op: '',
+          value: 'true',
+        })
+      }
+
+      return encodeBase64(buildQuery(fields))
+    },
+  }
+}

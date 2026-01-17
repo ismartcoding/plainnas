@@ -1,0 +1,68 @@
+name: Build and Draft Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [amd64, arm64]
+    outputs:
+      version: ${{ steps.vars.outputs.VERSION }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build web frontend
+        run: |
+          cd web
+          bash ./build.sh
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Get version info
+        id: vars
+        run: |
+          echo "VERSION=$(grep 'Version[[:space:]]*=' cmd/version.go | awk -F '"' '{print $2}')" >> $GITHUB_OUTPUT
+          echo "GIT_COMMIT=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+
+      - name: Build binary
+        run: |
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o plainnas-${{ matrix.goos }}-${{ matrix.goarch }} \
+            -ldflags "-X 'ismartcoding/plainnas/cmd.BuildTime=${{ steps.vars.outputs.BUILD_TIME }}' -X 'ismartcoding/plainnas/cmd.GitCommit=${{ steps.vars.outputs.GIT_COMMIT }}'"
+
+      - name: Zip binary
+        run: |
+          zip plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip plainnas-${{ matrix.goos }}-${{ matrix.goarch }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip
+          path: plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Create draft release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ needs.build.outputs.version }}
+          name: Release ${{ needs.build.outputs.version }}
+          body: "## What's Changed"
+          draft: true
+          prerelease: false
+          artifacts: ./artifacts/**/plainnas-*.zip
