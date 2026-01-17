@@ -1,0 +1,356 @@
+scalar Time
+
+enum SambaShareAuth {
+  GUEST
+  PASSWORD
+}
+
+type SambaShare {
+  name: String!
+  sharePath: String!
+  auth: SambaShareAuth!
+  readOnly: Boolean!
+}
+
+type SambaSettings {
+  enabled: Boolean!
+  username: String!
+  hasPassword: Boolean!
+  shares: [SambaShare!]!
+  serviceName: String!
+  serviceActive: Boolean!
+  serviceEnabled: Boolean!
+}
+
+input SambaShareInput {
+  name: String!
+  sharePath: String!
+  auth: SambaShareAuth!
+  readOnly: Boolean!
+}
+
+input SambaSettingsInput {
+  enabled: Boolean!
+  shares: [SambaShareInput!]!
+}
+
+enum FileTaskType {
+  COPY
+  MOVE
+}
+
+enum FileTaskStatus {
+  QUEUED
+  RUNNING
+  DONE
+  ERROR
+}
+
+input FileTaskOpInput {
+  src: String!
+  dst: String!
+  overwrite: Boolean!
+}
+
+type FileTask {
+  id: ID!
+  type: FileTaskType!
+  title: String!
+  status: FileTaskStatus!
+  error: String!
+  totalBytes: Int!
+  doneBytes: Int!
+  totalItems: Int!
+  doneItems: Int!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+
+type Mutation {
+  setDeviceName(name: String!): Boolean!
+  setKeyValue(key: String!, value: String!): Boolean!
+  deleteKeyValue(key: String!): Boolean!
+  setMediaSourceDirs(dirs: [String!]!): Boolean!
+  setSambaSettings(input: SambaSettingsInput!): Boolean!
+  setSambaUserPassword(password: String!): Boolean!
+  addFavoriteFolder(rootPath: String!, relativePath: String!): FavoriteFolder!
+  removeFavoriteFolder(rootPath: String!, relativePath: String!): FavoriteFolder!
+  setFavoriteFolderAlias(rootPath: String!, relativePath: String!, alias: String!): Boolean!
+  createDir(path: String!): File!
+  renameFile(path: String!, name: String!): Boolean!
+  copyFile(src: String!, dst: String!, overwrite: Boolean!): Boolean!
+  moveFile(src: String!, dst: String!, overwrite: Boolean!): Boolean!
+  createCopyTask(ops: [FileTaskOpInput!]!): FileTask!
+  createMoveTask(ops: [FileTaskOpInput!]!): FileTask!
+  deleteFiles(paths: [String!]!): Boolean!
+  trashFiles(paths: [String!]!): Boolean!
+  restoreFiles(paths: [String!]!): Boolean!
+  setTempValue(key: String!, value: String!): TempValue!
+  mergeChunks(fileId: String!, totalChunks: Int!, path: String!, replace: Boolean!): String!
+  startMediaScan(root: String!): Boolean!
+  pauseMediaScan: Boolean!
+  resumeMediaScan: Boolean!
+  stopMediaScan: Boolean!
+  rebuildMediaIndex(root: String!): Boolean!
+  # Audio playlist controls
+  addPlaylistAudios(query: String!): Boolean!
+  reorderPlaylistAudios(paths: [String!]!): Boolean!
+  playAudio(path: String!): PlaylistAudio!
+  updateAudioPlayMode(mode: MediaPlayMode!): Boolean!
+  clearAudioPlaylist: Boolean!
+  deletePlaylistAudio(path: String!): Boolean!
+  # Media trash controls
+  trashMediaItems(type: DataType!, query: String!): MediaActionResult!
+  restoreMediaItems(type: DataType!, query: String!): MediaActionResult!
+  deleteMediaItems(type: DataType!, query: String!): MediaActionResult!
+  # Tag management
+  createTag(type: DataType!, name: String!): Tag
+  updateTag(id: ID!, name: String!): Tag
+  deleteTag(id: ID!): Boolean!
+  # Tag relations
+  addToTags(type: DataType!, tagIds: [ID!]!, query: String!): Boolean!
+  updateTagRelations(type: DataType!, item: TagRelationStub!, addTagIds: [ID!]!, removeTagIds: [ID!]!): Boolean!
+  removeFromTags(type: DataType!, tagIds: [ID!]!, query: String!): Boolean!
+  # Storage volume alias
+  setStorageVolumeAlias(id: String!, alias: String!): Boolean!
+}
+
+type Query {
+  app: App!
+  favoriteFolders: [FavoriteFolder!]!
+  getTasks: [FileTask!]!
+  storageVolumes: [StorageVolume!]!
+  mediaSourceDirs: [String!]!
+  sambaSettings: SambaSettings!
+  images(offset: Int!, limit: Int!, query: String!, sortBy: FileSortBy!): [Image!]!
+  imageCount(query: String!): Int!
+  recentFilesCount: Int!
+  tags(type: DataType!): [Tag!]!
+  mediaBuckets(type: DataType!): [MediaBucket!]!
+  videos(offset: Int!, limit: Int!, query: String!, sortBy: FileSortBy!): [Video!]!
+  audios(offset: Int!, limit: Int!, query: String!, sortBy: FileSortBy!): [Audio!]!
+  audioCount(query: String!): Int!
+  videoCount(query: String!): Int!
+  deviceInfo: DeviceInfo!
+  fileInfo(id: ID!, path: String!): FileInfo
+  files(offset: Int!, limit: Int!, query: String!, sortBy: FileSortBy!): [File!]!
+  recentFiles: [File!]!
+  trashCount: Int!
+  uploadedChunks(fileId: String!): [Int!]!
+}
+
+type PlaylistAudio {
+  title: String!
+  artist: String!
+  path: String!
+  duration: Int!
+}
+
+type FavoriteFolder {
+  rootPath: String!
+  relativePath: String!
+  # Optional user-defined alias for display
+  alias: String
+}
+
+type App {
+  urlToken: String!
+  httpPort: Int!
+  httpsPort: Int!
+  deviceName: String!
+  appVersion: String!
+  audios: [PlaylistAudio!]!
+  audioCurrent: String!
+  audioMode: String!
+  dataDir: String!
+  scanProgress: ScanProgress!
+}
+
+type MediaActionResult {
+  type: DataType!
+  query: String!
+}
+
+enum MediaPlayMode {
+  REPEAT
+  REPEAT_ONE
+  SHUFFLE
+}
+
+type StorageVolume {
+  # Stable volume identifier.
+  # - Local block devices: "<uuid>" (filesystem UUID)
+  # - Remote mounts: "remote:<src>" (mount source)
+  id: String!
+  name: String!
+  mountPoint: String!
+  fsType: String!
+  totalBytes: Long!
+  usedBytes: Long!
+  freeBytes: Long!
+  removable: Boolean!
+  remote: Boolean!
+  # Drive technology for local volumes, or "Remote" for network mounts
+  driveType: String!
+  # Optional user-defined alias for display
+  alias: String
+}
+
+scalar Long
+
+type DeviceInfo {
+  hostname: String!
+  os: String!
+  kernelVersion: String!
+  arch: String!
+  uptime: Long!
+  bootTime: Long!
+  cpuModel: String!
+  cpuCores: Int!
+  cpuThreads: Int!
+  load1: Float!
+  load5: Float!
+  load15: Float!
+  memoryTotalBytes: Long!
+  memoryFreeBytes: Long!
+  swapTotalBytes: Long!
+  swapFreeBytes: Long!
+  swapUsedBytes: Long!
+  ips: [String!]!
+  nics: [NicInfo!]!
+}
+
+type NicInfo {
+  name: String!
+  mac: String!
+  speedRate: Long!
+}
+
+enum FileSortBy {
+  DATE_ASC
+  DATE_DESC
+  SIZE_ASC
+  SIZE_DESC
+  NAME_ASC
+  NAME_DESC
+}
+
+type File {
+  path: String!
+  isDir: Boolean!
+  createdAt: Time!
+  updatedAt: Time!
+  size: Long!
+  childCount: Int!
+}
+
+type GeoLocation {
+  latitude: Float
+  longitude: Float
+}
+
+"""Detailed info for a single media file used by the lightbox UI."""
+type FileInfo {
+  path: String!
+  updatedAt: Time!
+  size: Long!
+  tags: [Tag!]!
+  data: FileInfoData
+}
+
+union FileInfoData = ImageFileInfo | VideoFileInfo | AudioFileInfo
+
+type ImageFileInfo {
+  width: Int
+  height: Int
+  location: GeoLocation
+}
+
+type VideoFileInfo {
+  duration: Int
+  width: Int
+  height: Int
+  location: GeoLocation
+}
+
+type AudioFileInfo {
+  duration: Int
+  location: GeoLocation
+}
+
+type Tag {
+  id: ID!
+  name: String!
+  type: Int!
+  count: Int!
+}
+
+type TempValue {
+  key: String!
+  value: String!
+}
+
+type Image {
+  id: ID!
+  title: String!
+  path: String!
+  size: Long!
+  bucketId: String!
+  createdAt: Time!
+  updatedAt: Time!
+  tags: [Tag!]!
+}
+
+enum DataType {
+  DEFAULT
+  AUDIO
+  VIDEO
+  IMAGE
+}
+
+type MediaBucket {
+  id: ID!
+  name: String!
+  itemCount: Int!
+  topItems: [String!]!
+}
+
+type ScanProgress {
+  indexed: Long!
+  pending: Long!
+  total: Long!
+  state: String!
+}
+
+type Video {
+  id: ID!
+  title: String!
+  path: String!
+  duration: Int!
+  size: Long!
+  bucketId: String!
+  createdAt: Time!
+  updatedAt: Time!
+  tags: [Tag!]!
+}
+
+type Audio {
+  id: ID!
+  title: String!
+  artist: String!
+  path: String!
+  duration: Int!
+  size: Long!
+  bucketId: String!
+  albumFileId: String!
+  createdAt: Time!
+  updatedAt: Time!
+  tags: [Tag!]!
+}
+
+input TagRelationStub {
+  key: String!
+  title: String!
+  size: Long!
+}

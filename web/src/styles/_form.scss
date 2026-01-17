@@ -1,0 +1,108 @@
+.form-label {
+    display: block;
+    margin-block-end: 8px;
+    font-weight: bold;
+}
+
+.form-row {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    margin-block-end: 16px;
+    align-items: center;
+    
+    &>* {
+        flex: 1;
+    }
+
+    .flex-2 {
+        flex: 2;
+    }
+
+    .flex-3 {
+        flex: 3;
+    }
+}
+
+.form-control {
+    width: 100%;
+}
+
+.form-check-label {
+    display: inline-flex;
+    place-items: center;
+}
+
+.btn-icon {
+    align-items: center;
+    background: none;
+    border: none;
+    box-sizing: border-box;
+    cursor: pointer;
+    display: inline-flex;
+    justify-content: center;
+    outline: none;
+    padding: 0px;
+    position: relative;
+    text-decoration: none;
+    user-select: none;
+    z-index: 0;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px; // Fix width in flex layout
+    color: currentColor;
+
+    *:is(svg) {
+        height: 24px;
+        width: 24px;
+    }
+
+
+}
+.v-outlined-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: 20px;
+  padding: 8px 16px;
+  background-color: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+  height: 40px;
+  min-width: 64px;
+  position: relative;
+  overflow: hidden;
+  &:disabled {
+    border-color: rgba(0, 0, 0, 0.12);
+    color: rgba(0, 0, 0, 0.38);
+    cursor: default;
+    box-shadow: none;
+  }
+}
+
+.btn-icon:hover:not(:disabled):not(.active),
+.v-outlined-button:hover:not(:disabled):not(.active) {
+    background-color: rgba(0, 0, 0, 0.08);
+    transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-icon:disabled,
+.v-outlined-button:disabled {
+    cursor: default;
+}
+
+.dark {
+    .btn-icon:hover:not(:disabled),
+    .v-outlined-button:hover:not(:disabled) {
+        background-color: rgba(255, 255, 255, 0.08);
+    }
+}

@@ -1,0 +1,15 @@
+[nas]
+id = "4b150a2c-dcae-11eb-ba80-0242ac130004"
+name = "PlainNAS"
+
+[server]
+https_port = 8443
+http_port = 8080
+
+[auth]
+dev_token = "" # This is for developer
+password = "plainnas" # This is the password for login to the web ui
+
+[log]
+level = "error" # error, debug, info
+

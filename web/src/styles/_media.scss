@@ -1,0 +1,239 @@
+// Images & Videos
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+  gap: 8px;
+  padding-inline: 16px;
+  margin-block-end: 24px;
+
+  .media-item {
+    box-sizing: border-box;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    position: relative;
+    transition: padding 0.3s ease-in-out;
+
+    .svg.image {
+      width: 70%;
+      height: 70%;
+      left: 50%;
+      position: relative;
+      transform: translateX(-50%);
+    }
+
+    .btn-zoom {
+      position: absolute;
+      display: none;
+      top: 0;
+      right: 0;
+      z-index: 2;
+      margin: 4px;
+      background: rgba(0, 0, 0, 0.4);
+      color: #fff;
+    }
+
+    .actions {
+      display: none;
+      position: absolute;
+      top: 0;
+      right: 0;
+      padding: 4px;
+      background: var(--md-sys-color-surface-container-highest);
+      z-index: 2;
+      border-radius: 0 0 0 8px;
+      transition: display 0.3s;
+    }
+
+    &:hover {
+
+      .actions,
+      .btn-checkbox,
+      .btn-zoom {
+        display: flex;
+      }
+    }
+
+    &:hover .btn-checkbox,
+    &.selected .btn-checkbox,
+    &.selecting .btn-checkbox {
+      display: flex;
+    }
+
+    .btn-checkbox {
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 1;
+      color: var(--md-sys-color-primary);
+
+      /* Add white background to the svg icon */
+      &::before {
+        content: '';
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        background: var(--md-sys-color-surface);
+        z-index: -1;
+      }
+    }
+
+    &.selected {
+      padding: 16px;
+    }
+
+    &.selecting::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(59, 130, 246, 0.4);
+      border-radius: 8px;
+      z-index: 1;
+    }
+
+    &.selecting {
+      .btn-checkbox {
+        color: var(--md-sys-color-primary);
+      }
+    }
+  }
+
+  &.select-mode {
+    .media-item {
+      .actions {
+        display: flex;
+      }
+    }
+  }
+
+  .btn-checkbox {
+    margin-inline-end: auto;
+  }
+
+  .info {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    padding: 4px 8px;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1;
+    border-radius: 8px 0 8px 0;
+    align-items: center;
+    justify-content: end;
+
+    .tags {
+      width: 0;
+      flex: 1;
+    }
+
+    .tags a,
+    .right {
+      color: #fff;
+      font-size: 12px;
+    }
+
+    &.has-tags {
+      left: 0;
+      border-radius: 0 0 8px 8px;
+    }
+  }
+}
+
+.media-list {
+  .media-item {
+    grid-template-areas:
+      'start image title actions time'
+      'start image subtitle  actions time';
+    grid-template-columns: 48px 50px 1fr 140px minmax(140px, auto);
+
+    &:hover {
+      cursor: pointer;
+    }
+
+    .image {
+      max-width: 50px;
+      max-height: 50px;
+      grid-area: image;
+      margin-block: 12px;
+      text-align: center;
+      border-radius: 4px;
+
+      .svg {
+        max-width: 50px;
+        max-height: 50px;
+      }
+    }
+
+    .title {
+      margin-inline: 16px;
+      padding-block-start: 12px;
+    }
+
+    .subtitle {
+      grid-area: subtitle;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 0.875rem;
+      margin-inline: 16px;
+      margin-block-start: 8px;
+      margin-block-end: 12px;
+    }
+
+    .time {
+      grid-area: time;
+      display: flex;
+      align-items: center;
+      padding-inline: 16px;
+      justify-content: end;
+    }
+  }
+}
+
+.no-hover {
+  .media-grid .media-item .btn-checkbox {
+    display: flex;
+  }
+
+  .media-list .media-item .actions {
+    visibility: visible;
+  }
+}
+
+@keyframes rotate-icon {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(90deg);
+  }
+}
+
+.playlist-remove-icon {
+  color: var(--md-sys-color-error) !important;
+
+  &.rotating {
+    animation: rotate-icon 250ms ease-out forwards;
+  }
+}
+
+.playlist-add-icon {
+  color: var(--md-sys-color-primary) !important;
+
+  &.rotating {
+    animation: rotate-icon 250ms ease-out forwards;
+  }
+}

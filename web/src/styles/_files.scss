@@ -1,0 +1,209 @@
+.main-files {
+  .scroller {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: calc(100vh - 112px);
+  }
+
+  .file-item {
+    margin: 0 16px 8px 16px;
+    grid-template-areas:
+      'start image title actions'
+      'start image subtitle actions';
+    grid-template-columns: 48px 50px auto 250px;
+
+    &.recent-file-item {
+      grid-template-columns: 48px 50px auto 120px;
+    }
+
+    &:hover {
+      cursor: pointer;
+    }
+
+    .image {
+      width: 50px;
+      height: 50px;
+      grid-area: image;
+      margin-block: 12px 8px;
+      text-align: center;
+
+      .svg {
+        max-width: 50px;
+        max-height: 50px;
+      }
+    }
+
+    .title {
+      margin-inline: 16px;
+      padding-block-start: 8px;
+      user-select: none;
+    }
+
+    .subtitle {
+      grid-area: subtitle;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 0.875rem;
+      margin-inline: 16px;
+      margin-block: 8px;
+      user-select: none;
+    }
+
+    .actions {
+      justify-content: end;
+    }
+  }
+
+  .no-data-placeholder {
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    width: 100%;
+  }
+
+  .card-info {
+    max-width: 400px;
+
+    .key-value .key {
+      width: 80px;
+    }
+  }
+}
+
+@mixin volume-card-shared-structure($row-gap: 10px, $title-gap: 8px) {
+  .volume-card {
+    cursor: pointer;
+    border-radius: 12px;
+    padding: 8px 12px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+
+    &:hover {
+      background: color-mix(in srgb, var(--md-sys-color-primary) 6%, transparent);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    &.active {
+      background: color-mix(in srgb, var(--md-sys-color-primary) 6%, transparent);
+      outline: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent);
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: $row-gap;
+    }
+
+    .content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: $title-gap;
+      margin-bottom: 8px;
+    }
+
+    .left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .title-row .title {
+      font-weight: 600;
+      color: var(--md-sys-color-on-surface);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chip {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      color: var(--md-sys-color-on-surface-variant);
+      white-space: nowrap;
+      border-radius: 40px;
+      background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+    }
+
+    .progress {
+      position: relative;
+      background: rgba(0, 0, 0, 0.08);
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar {
+      height: 100%;
+      background: var(--md-sys-color-primary);
+      border-radius: 999px;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 0.82rem;
+    }
+
+    .muted {
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    .percent {
+      font-weight: 600;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    .progress .bar {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      transition: width 0.25s ease;
+      border-radius: 8px;
+    }
+
+    .percent.warn {
+      color: #ef6c00;
+    }
+  }
+}
+
+.files-sidebar {
+  @include volume-card-shared-structure(10px, 8px);
+
+  .volumes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+.browser-volumes {
+  @include volume-card-shared-structure(10px, 10px);
+
+  .volumes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+  }
+
+  .volume-card {
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  @media (max-width: 720px) {
+    .volumes {
+      grid-template-columns: 1fr;
+    }
+  }
+}

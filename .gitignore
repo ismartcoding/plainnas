@@ -1,0 +1,6 @@
+plainnas
+*.swp
+tmp
+.DS_Store
+.idea
+dist
