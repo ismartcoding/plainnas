@@ -96,8 +96,8 @@ func updateTagRelations(typeArg model.DataType, item model.TagRelationStub, addT
 	tr := helpers.TagRelationStub{Key: item.Key, Title: item.Title, Size: item.Size}
 
 	for _, tagID := range addTagIds {
-			relation := tr.ToTagRelation(tagID)
-			if err := helpers.TagHelperInstance.AddTagRelations([]*db.TagRelationRef{relation}); err != nil {
+		relation := tr.ToTagRelation(tagID)
+		if err := helpers.TagHelperInstance.AddTagRelations([]*db.TagRelationRef{relation}); err != nil {
 			return false, err
 		}
 	}

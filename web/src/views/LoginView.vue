@@ -3,22 +3,21 @@
     <header-actions :logged-in="false" />
   </header>
   <h1>{{ $t('app_name') }}</h1>
-  <div class="login-block">
-    <form @submit.prevent="onSubmit">
-      <div v-show="showError" class="alert alert-danger show" role="alert">
-        <i-material-symbols:error-outline-rounded />
-        <div class="body">
-          {{ error ? $t(error) : '' }}
-        </div>
+  <form class="auth-form" @submit.prevent="onSubmit">
+    <div v-show="showError" class="alert alert-danger show" role="alert">
+      <i-material-symbols:error-outline-rounded />
+      <div class="body">
+        {{ error ? $t(error) : '' }}
       </div>
-      <v-text-field v-model="password" :label="t('password')" type="password" class="form-control"
-        :error="passwordError" autocomplete="current-password" :error-text="passwordError ? $t(passwordError) : ''"
-        @keydown.enter="onSubmit" />
-      <v-filled-button :disabled="isSubmitting" :loading="isSubmitting">
-        {{ $t(isSubmitting ? 'logging_in' : 'log_in') }}
-      </v-filled-button>
-    </form>
-  </div>
+    </div>
+    <v-text-field
+v-model="password" :label="t('password')" type="password" class="form-control"
+      :error="passwordError" autocomplete="current-password" :error-text="passwordError ? $t(passwordError) : ''"
+      @keydown.enter="onSubmit" />
+    <v-filled-button :disabled="isSubmitting" :loading="isSubmitting">
+      {{ $t(isSubmitting ? 'logging_in' : 'log_in') }}
+    </v-filled-button>
+  </form>
   <div v-if="showWarning" class="tips">{{ $t('browser_warning') }}</div>
 </template>
 <script setup lang="ts">
@@ -37,7 +36,7 @@ const error = ref('')
 const showWarning = window.location.protocol === 'http:' ? false : !(window.navigator as any).userAgentData
 const { t } = useI18n()
 const { value: password, errorMessage: passwordError } = useField('password', string().required())
-
+import { getAccurateAgent } from '@/lib/agent/agent'
 
 async function initRequest() {
   const token = localStorage.getItem('auth_token') ?? ''
@@ -54,7 +53,18 @@ async function initRequest() {
   }
 
   const r = await fetch(`${getApiBaseUrl()}/auth/status`, options)
-  if (r.status === 200) {
+  if (!r.ok) {
+    return
+  }
+  const json = await r.json().catch(() => null)
+  if (json?.needsSetup) {
+    router.replace({
+      path: '/setup-password',
+      query: { redirect: router.currentRoute.value.query['redirect']?.toString() ?? '/' },
+    })
+    return
+  }
+  if (json?.authenticated) {
     window.location.href = router.currentRoute.value.query['redirect']?.toString() ?? '/'
   }
 }
@@ -64,20 +74,33 @@ initRequest()
 const onSubmit = handleSubmit(async () => {
   const pass = (password.value as string) ?? ''
   const hash = sha512(pass)
+  const key = hashToKey(hash)
   error.value = ''
   showError.value = false
   isSubmitting.value = true
   try {
+    const ua = await getAccurateAgent()
+    const enc = chachaEncrypt(
+      key,
+      JSON.stringify({
+        password: hash,
+        browserName: ua.browser.name,
+        browserVersion: ua.browser.version,
+        osName: ua.os.name,
+        osVersion: ua.os.version,
+        isMobile: ua.isMobile,
+      })
+    )
+
     const r = await fetch(`${getApiBaseUrl()}/auth`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'c-id': localStorage.getItem('client_id') ?? '',
+        ...getApiHeaders(),
+        'Content-Type': 'application/octet-stream',
       },
-      body: JSON.stringify({ password: hash }),
+      body: bitArrayToUint8Array(enc),
     })
     if (r.ok) {
-      const key = hashToKey(hash)
       const buf = await r.arrayBuffer()
       const decrypted = chachaDecrypt(key, arrayBufferToBitArray(buf))
       const json = JSON.parse(decrypted)
@@ -103,32 +126,9 @@ const onSubmit = handleSubmit(async () => {
 </script>
 
 <style lang="scss" scoped>
-.header {
-  display: flex;
-  justify-content: end;
-  margin-top: 6px;
-}
+@use '@/styles/auth-shared.scss' as *;
 
-.v-filled-button,
-.v-outlined-button {
-  margin-top: 24px;
-  width: 100%;
-}
-
-h1 {
-  margin-top: 100px;
-  text-align: center;
-}
-
-.login-block {
-  width: 280px;
-  margin: 0 auto;
-  --outlined-field-bg: var(--md-sys-color-surface-variant);
-  background-color: var(--md-sys-color-surface-variant);
-  border-radius: var(--pl-shape-xl);
-  padding-block: var(--pl-spacing-xl);
-  padding: 40px;
-
+.auth-form {
   .tap-phone {
     text-align: center;
     padding-block-end: 1rem;
@@ -143,16 +143,5 @@ h1 {
   .tap-phone-text {
     text-align: center;
   }
-}
-
-.tips {
-  text-align: center;
-  padding: 16px;
-  width: 320px;
-  margin: 0 auto;
-}
-
-.alert-danger {
-  margin-block-end: 16px;
 }
 </style>

@@ -3,14 +3,17 @@
 class="volume-card" role="button" tabindex="0" :class="{ active }" @click="$emit('click')"
     @keydown.enter.prevent="$emit('click')" @keydown.space.prevent="$emit('click')">
     <div class="row">
-      <span class="icon" aria-hidden="true">
-        <slot name="icon">
-          <i-lucide:hard-drive />
-        </slot>
-      </span>
       <div class="content">
         <div class="title-row">
           <div class="left">
+            <span class="icon" aria-hidden="true">
+              <popper>
+                <i-lucide:hard-drive />
+                <template #content>
+                  <pre class="view-raw">{{ data }}</pre>
+                </template>
+              </popper>
+            </span>
             <span class="title">{{ title }}</span>
             <span v-if="driveType" class="chip">{{ driveType }}</span>
           </div>
@@ -46,8 +49,9 @@ const props = defineProps({
   count: { type: String, default: '' },
   active: { type: Boolean, default: false },
   showProgress: { type: Boolean, default: true },
+  data: { type: Object, default: () => ({}) },
 })
-
+  
 defineEmits<{ (e: 'click'): void }>()
 
 const usedPercentClamped = computed(() => {

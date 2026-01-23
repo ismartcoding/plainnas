@@ -1,7 +1,13 @@
 <template>
   <teleport to="body">
     <div class="v-modal-backdrop" @click="handleBackdropClick">
-      <div class="v-modal-container" :class="modalClasses" :data-animate-height="animateHeight ? '1' : '0'" @click.stop>
+      <div
+        class="v-modal-container"
+        :class="[modalClasses, containerClass]"
+        :style="containerStyle"
+        :data-animate-height="animateHeight ? '1' : '0'"
+        @click.stop
+      >
         <div class="v-modal-sizer" :style="sizerStyle">
           <div ref="contentEl" class="v-modal-content">
             <!-- Headline slot -->
@@ -26,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, onUpdated, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, onUpdated, ref, useAttrs } from 'vue'
 
 interface Props {
   backgroundClose?: boolean
@@ -37,6 +43,10 @@ const props = withDefaults(defineProps<Props>(), {
   backgroundClose: true,
   modalId: ''
 })
+
+const attrs = useAttrs()
+const containerStyle = computed(() => attrs.style)
+const containerClass = computed(() => attrs.class)
 
 const modalClasses = computed(() => {
   return (props.modalId || '')
@@ -220,6 +230,8 @@ defineExpose({
   font-weight: 500;
   line-height: 1.6;
   color: var(--md-sys-color-on-surface);
+  display: flex;
+  justify-content: space-between;
 }
 
 .v-modal-body {

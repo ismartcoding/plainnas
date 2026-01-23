@@ -39,22 +39,10 @@
       <v-icon-button v-tooltip="$t('move_to_trash')" class="sm" @click.stop="trashItem(item)">
           <i-material-symbols:delete-outline-rounded />
       </v-icon-button>
-    
-      <v-dropdown v-model="infoMenuVisible">
-        <template #trigger>
-          <v-icon-button v-tooltip="$t('info')" class="sm">
-              <i-material-symbols:info-outline-rounded />
-          </v-icon-button>
-        </template>
-        <section class="card card-info">
-          <div class="key-value vertical">
-            <div class="key">{{ $t('path') }}</div>
-            <div class="value">
-              {{ item.path }}
-            </div>
-          </div>
-        </section>
-      </v-dropdown>
+
+      <v-icon-button v-tooltip="$t('info')" class="sm" @click.stop="openInfo(item)">
+          <i-material-symbols:info-outline-rounded />
+      </v-icon-button>
 
       <v-dropdown v-model="actionsMenuVisible">
         <template #trigger>
@@ -91,6 +79,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { IFile } from '@/lib/file'
+import { openModal } from '@/components/modal'
+import FileInfoModal from '@/components/files/FileInfoModal.vue'
 
 interface Props {
   item: IFile
@@ -118,7 +108,6 @@ const emit = defineEmits<{
 }>()
 
 const uploadMenuVisible = ref(false)
-const infoMenuVisible = ref(false)
 const actionsMenuVisible = ref(false)
 
 function downloadDir(path: string) {
@@ -155,6 +144,11 @@ function downloadItem(item: IFile) {
   } else {
     downloadFile(item.path)
   }
+}
+
+function openInfo(item: IFile) {
+
+  openModal(FileInfoModal, { item })
 }
 
 function duplicateItem(item: IFile) {

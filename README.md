@@ -44,7 +44,8 @@ If you want “no flashing images”, “no platform lock-in”, and a clean web
 curl -fsSL https://raw.githubusercontent.com/ismartcoding/plainnas/refs/heads/main/install.sh | bash
 ```
 
-### Install manually
+<details>
+<summary><strong>Install manually</strong></summary>
 
 PlainNAS is Linux-only and is typically run as root (it mounts disks and manages system directories).
 
@@ -82,11 +83,21 @@ Default ports come from `/etc/plainnas/config.toml`:
 - HTTP: `http://<server-ip>:8080`
 - HTTPS: `https://<server-ip>:8443` (TLS cert is auto-generated on first run)
 
-Default UI password (change it): `plainnas`
+On first run (when no admin password is configured), the web UI will redirect you to a setup page to create one.
+
+If you need to change it later, run:
+
+```bash
+sudo plainnas passwd
+```
+
+</details>
 
 ## Files and directories
 
 ```text
+/usr/local/bin/plainnas  # PlainNAS binary
+
 /etc/plainnas/
 	config.toml        # main configuration
 	tls.pem            # generated TLS certificate
@@ -99,7 +110,10 @@ Default UI password (change it): `plainnas`
 
 Storage behavior (high level): on startup PlainNAS reconciles block devices and ensures each filesystem is mounted under a stable `/mnt/usbX` slot, and keeps the mapping stable across reboots/re-plug.
 
-## Developer guide
+Time handling: all persisted timestamps (DB/cache/event log) are stored in UTC.
+
+<details>
+<summary><strong>Developer guide</strong></summary>
 
 ### Run backend (dev)
 
@@ -134,14 +148,18 @@ go mod tidy
 go generate ./internal/graph
 ```
 
+</details>
+
 ## Docs
 
 - Storage: [docs/storage.md](docs/storage.md)
 - Storage aliases: [docs/storage-alias.md](docs/storage-alias.md)
 - Trash: [docs/trash.md](docs/trash.md)
+- File conflicts (copy/paste & upload): [docs/file-conflicts.md](docs/file-conflicts.md)
 - Tags: [docs/tags.md](docs/tags.md)
 - Thumbnails: [docs/thumbnails.md](docs/thumbnails.md)
 - Media items: [docs/media-items.md](docs/media-items.md)
+- Events (audit log): [docs/events.md](docs/events.md)
 - LAN share (SMB/Samba): [docs/samba.md](docs/samba.md)
 
 ## Hardware (example)

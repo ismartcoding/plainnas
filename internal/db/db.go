@@ -12,6 +12,10 @@ import (
 	"github.com/cockroachdb/pebble"
 )
 
+func syncWriteOptions() *pebble.WriteOptions {
+	return &pebble.WriteOptions{Sync: true}
+}
+
 // PebbleDB wraps the pebble.DB type for better type safety
 type PebbleDB struct {
 	db *pebble.DB

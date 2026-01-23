@@ -17,13 +17,18 @@ type App struct {
 	URLToken     string           `json:"urlToken"`
 	HTTPPort     int              `json:"httpPort"`
 	HTTPSPort    int              `json:"httpsPort"`
-	DeviceName   string           `json:"deviceName"`
-	AppVersion   string           `json:"appVersion"`
 	Audios       []*PlaylistAudio `json:"audios"`
 	AudioCurrent string           `json:"audioCurrent"`
 	AudioMode    string           `json:"audioMode"`
 	DataDir      string           `json:"dataDir"`
 	ScanProgress *ScanProgress    `json:"scanProgress"`
+}
+
+type AppUpdate struct {
+	CurrentVersion string  `json:"currentVersion"`
+	LatestVersion  *string `json:"latestVersion,omitempty"`
+	HasUpdate      bool    `json:"hasUpdate"`
+	URL            *string `json:"url,omitempty"`
 }
 
 type Audio struct {
@@ -51,6 +56,8 @@ type DeviceInfo struct {
 	Hostname         string     `json:"hostname"`
 	Os               string     `json:"os"`
 	KernelVersion    string     `json:"kernelVersion"`
+	AppVersion       string     `json:"appVersion"`
+	AppFullVersion   string     `json:"appFullVersion"`
 	Arch             string     `json:"arch"`
 	Uptime           int64      `json:"uptime"`
 	BootTime         int64      `json:"bootTime"`
@@ -67,6 +74,15 @@ type DeviceInfo struct {
 	SwapUsedBytes    int64      `json:"swapUsedBytes"`
 	Ips              []string   `json:"ips"`
 	Nics             []*NicInfo `json:"nics"`
+	Model            string     `json:"model"`
+}
+
+type Event struct {
+	ID        string    `json:"id"`
+	Type      string    `json:"type"`
+	Message   string    `json:"message"`
+	ClientID  string    `json:"clientId"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type FavoriteFolder struct {
@@ -158,6 +174,17 @@ type NicInfo struct {
 	SpeedRate int64  `json:"speedRate"`
 }
 
+type PathStat struct {
+	Exists bool `json:"exists"`
+	IsDir  bool `json:"isDir"`
+}
+
+type PathStatResult struct {
+	Path   string `json:"path"`
+	Exists bool   `json:"exists"`
+	IsDir  bool   `json:"isDir"`
+}
+
 type PlaylistAudio struct {
 	Title    string `json:"title"`
 	Artist   string `json:"artist"`
@@ -204,18 +231,38 @@ type ScanProgress struct {
 	State   string `json:"state"`
 }
 
-type StorageVolume struct {
-	ID         string  `json:"id"`
-	Name       string  `json:"name"`
-	MountPoint string  `json:"mountPoint"`
-	FsType     string  `json:"fsType"`
-	TotalBytes int64   `json:"totalBytes"`
-	UsedBytes  int64   `json:"usedBytes"`
-	FreeBytes  int64   `json:"freeBytes"`
-	Removable  bool    `json:"removable"`
-	Remote     bool    `json:"remote"`
-	DriveType  string  `json:"driveType"`
-	Alias      *string `json:"alias,omitempty"`
+type Session struct {
+	ClientID   string    `json:"clientId"`
+	ClientName string    `json:"clientName"`
+	LastActive time.Time `json:"lastActive"`
+	CreatedAt  time.Time `json:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
+}
+
+type StorageDisk struct {
+	Name      string  `json:"name"`
+	Path      string  `json:"path"`
+	SizeBytes int64   `json:"sizeBytes"`
+	Removable bool    `json:"removable"`
+	Model     *string `json:"model,omitempty"`
+}
+
+type StorageMount struct {
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Path         *string `json:"path,omitempty"`
+	PartitionNum *int    `json:"partitionNum,omitempty"`
+	Label        *string `json:"label,omitempty"`
+	UUID         *string `json:"uuid,omitempty"`
+	MountPoint   *string `json:"mountPoint,omitempty"`
+	FsType       *string `json:"fsType,omitempty"`
+	TotalBytes   int64   `json:"totalBytes"`
+	UsedBytes    *int64  `json:"usedBytes,omitempty"`
+	FreeBytes    *int64  `json:"freeBytes,omitempty"`
+	Alias        *string `json:"alias,omitempty"`
+	Remote       bool    `json:"remote"`
+	DriveType    *string `json:"driveType,omitempty"`
+	ParentDevice *string `json:"parentDevice,omitempty"`
 }
 
 type Tag struct {

@@ -58,6 +58,7 @@ func Run(ctx context.Context) {
 	r.GET("/health_check", func(c *gin.Context) { c.Status(http.StatusOK) })
 	r.POST("/auth", authHandler())
 	r.POST("/auth/status", authStatusHandler())
+	r.POST("/auth/setup", authSetupHandler())
 	r.POST("/graphql", requireAuth(), graphqlHandler())
 	r.POST("/upload", uploadHandler())
 	r.POST("/upload_chunk", uploadChunkHandler())

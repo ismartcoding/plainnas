@@ -27,24 +27,42 @@ interface IUploadChunk {
 // Unified progress update function
 function updateUploadProgress(upload: IUploadItem, newSize: number, forceUpdate: boolean = false) {
   const currentTime = Date.now()
-  const shouldUpdate = forceUpdate || !upload.lastUpdateTime || currentTime - upload.lastUpdateTime >= UPDATE_INTERVAL
 
-  if (shouldUpdate) {
-    const timeDiff = (currentTime - (upload.lastUpdateTime || currentTime)) / 1000 || 0.1
+  // `forceUpdate` is used to push the latest size to the UI even if we're
+  // inside the update interval (e.g. on chunk boundaries). We intentionally
+  // do NOT compute speed for these forced updates to avoid unrealistically
+  // high spikes from tiny time deltas.
+  const shouldUpdateSpeed = !!upload.lastUpdateTime && currentTime - upload.lastUpdateTime >= UPDATE_INTERVAL
+  const shouldUpdateSize = forceUpdate || !upload.lastUpdateTime || shouldUpdateSpeed
+
+  if (shouldUpdateSize) {
+    upload.uploadedSize = newSize
+  }
+
+  if (!upload.lastUpdateTime) {
+    upload.lastUpdateTime = currentTime
+    upload.lastUploadedSize = newSize
+    upload.uploadSpeed = 0
+    return
+  }
+
+  if (shouldUpdateSpeed) {
+    const timeDiffSec = (currentTime - upload.lastUpdateTime!) / 1000
     const sizeDiff = newSize - (upload.lastUploadedSize || 0)
 
-    // Update progress and speed
-    upload.uploadedSize = newSize
-
-    if (sizeDiff > 0 && timeDiff > 0) {
-      upload.uploadSpeed = Math.round(sizeDiff / timeDiff)
+    if (sizeDiff > 0 && timeDiffSec > 0) {
+      upload.uploadSpeed = Math.round(sizeDiff / timeDiffSec)
     }
 
     upload.lastUpdateTime = currentTime
     upload.lastUploadedSize = newSize
-  } else if (forceUpdate) {
-    // Only update size when forced, not speed
-    upload.uploadedSize = newSize
+    return
+  }
+
+  if (forceUpdate) {
+    // Keep baselines in sync so the next timed speed update is stable.
+    upload.lastUpdateTime = currentTime
+    upload.lastUploadedSize = newSize
   }
 }
 
@@ -417,20 +435,20 @@ async function uploadChunk(upload: IUploadItem, chunkData: IUploadChunk & { star
     )
 
     xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-          if (xhr.status === 201) {
-            emitter.emit('upload_progress', upload)
-            resolve(true)
-          } else if (xhr.status === 0) {
-            console.log(`Chunk ${chunkData.index} upload was aborted`)
-            emitter.emit('upload_progress', upload)
-            resolve(false)
-          } else {
-            console.warn(`Chunk ${chunkData.index} upload failed with status ${xhr.status}`)
-            emitter.emit('upload_progress', upload)
-            resolve(false)
-          }
+      if (xhr.readyState === 4) {
+        if (xhr.status === 201) {
+          emitter.emit('upload_progress', upload)
+          resolve(true)
+        } else if (xhr.status === 0) {
+          console.log(`Chunk ${chunkData.index} upload was aborted`)
+          emitter.emit('upload_progress', upload)
+          resolve(false)
+        } else {
+          console.warn(`Chunk ${chunkData.index} upload failed with status ${xhr.status}`)
+          emitter.emit('upload_progress', upload)
+          resolve(false)
         }
+      }
     }
 
     xhr.onerror = () => {

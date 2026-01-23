@@ -10,14 +10,26 @@ func files(offset int, limit int, query string, sortBy model.FileSortBy) ([]*mod
 	if q.TrashOnly {
 		// Metadata-driven trash listing (with optional directory browsing).
 		baseFilter := helpers.TrashBaseFilter(q.RootPath, q.RelativePath)
-		return helpers.ListTrashFiles(offset, limit, q.Text, baseFilter, sortBy)
+		items, err := helpers.ListTrashFiles(offset, limit, q.Text, baseFilter, sortBy)
+		if err != nil {
+			return nil, err
+		}
+		return helpers.FilterFilesBySize(items, q.FileSizeOp, q.FileSizeVal), nil
 	}
 
 	base := helpers.BuildBaseDir(q.RootPath, q.RelativePath)
-	if q.Text != "" {
-		return helpers.SearchIndexFiles(q.Text, base, offset, limit, q.ShowHidden)
+
+	// Use index search if we have text search OR file size filter
+	if q.Text != "" || (q.FileSizeOp != "" && q.FileSizeVal > 0) {
+		items, err := helpers.SearchIndexFiles(q.Text, base, offset, limit, q.ShowHidden, q.FileSizeOp, q.FileSizeVal)
+		if err != nil {
+			return nil, err
+		}
+		// SearchIndexFiles already applies size filter via index
+		return items, nil
 	}
 
+	// No filters - just list files
 	items := helpers.ListFiles(base, q.ShowHidden)
 	helpers.SortFiles(items, sortBy)
 	if offset > 0 && offset < len(items) {

@@ -4,31 +4,36 @@
       <img class="brand-logo" src="/logo.svg" alt="PlainNAS" />
     </router-link>
 
-    <router-link v-tooltip="$t('files')" :to="lastRoute('/files', 'files')" class="rail-item"
+    <router-link
+v-tooltip="$t('files')" :to="lastRoute('/files/recent', 'files')" class="rail-item"
       :class="{ active: isActive('/files') }" aria-label="Files">
       <i-lucide:folder />
       <div class="rail-label">{{ $t('files') }}</div>
     </router-link>
 
-    <router-link v-tooltip="$t('audios')" :to="lastRoute('/audios', 'audios')" class="rail-item"
+    <router-link
+v-tooltip="$t('audios')" :to="lastRoute('/audios', 'audios')" class="rail-item"
       :class="{ active: isActive('/audios') }" aria-label="Audios">
       <i-lucide:music />
       <div class="rail-label">{{ $t('audios') }}</div>
     </router-link>
 
-    <router-link v-tooltip="$t('images')" :to="lastRoute('/images', 'images')" class="rail-item"
+    <router-link
+v-tooltip="$t('images')" :to="lastRoute('/images', 'images')" class="rail-item"
       :class="{ active: isActive('/images') }" aria-label="Images">
       <i-lucide:image />
       <div class="rail-label">{{ $t('images') }}</div>
     </router-link>
 
-    <router-link v-tooltip="$t('videos')" :to="lastRoute('/videos', 'videos')" class="rail-item"
+    <router-link
+v-tooltip="$t('videos')" :to="lastRoute('/videos', 'videos')" class="rail-item"
       :class="{ active: isActive('/videos') }" aria-label="Videos">
       <i-lucide:video />
       <div class="rail-label">{{ $t('videos') }}</div>
     </router-link>
 
-    <router-link v-tooltip="$t('settings')" :to="lastRoute('/settings', 'settings')" class="rail-item"
+    <router-link
+v-tooltip="$t('settings')" :to="lastRoute('/settings', 'settings')" class="rail-item"
       :class="{ active: isActive('/settings') }" aria-label="Settings">
       <i-lucide:settings />
       <div class="rail-label">{{ $t('settings') }}</div>

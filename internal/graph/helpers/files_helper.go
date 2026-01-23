@@ -9,6 +9,7 @@ import (
 	"unsafe"
 
 	"ismartcoding/plainnas/internal/graph/model"
+	"ismartcoding/plainnas/internal/pkg/log"
 )
 
 const (
@@ -189,5 +190,52 @@ func SortFiles(items []*model.File, sortBy model.FileSortBy) {
 			return strings.ToLower(filepath.Base(items[i].Path)) > strings.ToLower(filepath.Base(items[j].Path))
 		})
 	default:
+	}
+}
+
+// FilterFilesBySize filters files based on size criteria
+// When fileSize filter is active, directories are excluded from results
+func FilterFilesBySize(files []*model.File, op string, filterSize int64) []*model.File {
+	log.Debugf("[FilterFilesBySize] called: op=%s, filterSize=%d, inputCount=%d", op, filterSize, len(files))
+	if filterSize == 0 || op == "" {
+		log.Debugf("[FilterFilesBySize] no filtering (filterSize=%d, op=%s)", filterSize, op)
+		return files
+	}
+
+	filtered := make([]*model.File, 0, len(files))
+	for _, f := range files {
+		if f == nil {
+			continue
+		}
+		// When filtering by size, exclude directories (only show files)
+		if f.IsDir {
+			continue
+		}
+
+		if matchesFileSize(f.Size, op, filterSize) {
+			filtered = append(filtered, f)
+		}
+	}
+	log.Debugf("[FilterFilesBySize] result: filtered %d -> %d files (directories excluded)", len(files), len(filtered))
+	return filtered
+}
+
+// matchesFileSize checks if a file size matches the filter
+func matchesFileSize(size int64, op string, filterSize int64) bool {
+	switch op {
+	case ">":
+		return size > filterSize
+	case ">=":
+		return size >= filterSize
+	case "<":
+		return size < filterSize
+	case "<=":
+		return size <= filterSize
+	case "=", "":
+		return size == filterSize
+	case "!=":
+		return size != filterSize
+	default:
+		return true
 	}
 }

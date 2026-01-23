@@ -51,6 +51,7 @@ import { useI18n } from 'vue-i18n'
 import { useMainStore } from '@/stores/main'
 import { useTempStore } from '@/stores/temp'
 import { storeToRefs } from 'pinia'
+import { initMutation, logoutGQL, runMutation } from '@/lib/api/mutation'
 
 const props = defineProps({
   loggedIn: { type: Boolean },
@@ -67,6 +68,10 @@ const { locale, t } = useI18n()
 const isTablet = inject('isTablet')
 const hasTasks = computed(() => {
   return tempStore.uploads.length > 0
+})
+
+const { mutate: logoutMutate, onDone: onLogoutDone, onError: onLogoutError } = initMutation({
+  document: logoutGQL,
 })
 
 const langs = [
@@ -103,8 +108,11 @@ function changeLang(loc: string) {
 
 function logout() {
   menuVisible.value = false
-  localStorage.clear()
-  window.location.reload()
+
+  runMutation(logoutMutate, onLogoutDone, onLogoutError).finally(() => {
+    localStorage.clear()
+    window.location.reload()
+  })
 }
 </script>
 

@@ -8,7 +8,6 @@ http_port = 8080
 
 [auth]
 dev_token = "" # This is for developer
-password = "plainnas" # This is the password for login to the web ui
 
 [log]
 level = "error" # error, debug, info

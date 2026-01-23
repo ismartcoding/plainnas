@@ -23,9 +23,10 @@ func GetCache() *db.PebbleDB {
 
 // Set stores a value in the cache with expiration
 func Set(key string, value interface{}, expiration time.Duration) error {
+	now := time.Now().UTC()
 	item := CacheItem{
 		Value:     []byte(fmt.Sprintf("%v", value)),
-		ExpiresAt: time.Now().Add(expiration),
+		ExpiresAt: now.Add(expiration),
 	}
 
 	return GetCache().StoreJSON(key, item)
@@ -38,8 +39,7 @@ func Get(key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	if time.Now().After(item.ExpiresAt) {
+	if time.Now().UTC().After(item.ExpiresAt) {
 		GetCache().DeleteByKey(key)
 		return "", nil
 	}
@@ -59,9 +59,10 @@ func SetJSON(key string, value interface{}, expiration time.Duration) error {
 		return err
 	}
 
+	now := time.Now().UTC()
 	item := CacheItem{
 		Value:     data,
-		ExpiresAt: time.Now().Add(expiration),
+		ExpiresAt: now.Add(expiration),
 	}
 
 	return GetCache().StoreJSON(key, item)
@@ -75,7 +76,7 @@ func GetJSON(key string, value interface{}) error {
 		return err
 	}
 
-	if time.Now().After(item.ExpiresAt) {
+	if time.Now().UTC().After(item.ExpiresAt) {
 		GetCache().DeleteByKey(key)
 		return nil
 	}

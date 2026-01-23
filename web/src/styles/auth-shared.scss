@@ -1,0 +1,23 @@
+.header {
+    display: flex;
+    justify-content: end;
+    margin-top: 6px;
+}
+
+h1 {
+    margin-top: 100px;
+    text-align: center;
+}
+
+.auth-form {
+    width: 280px;
+    margin: 0 auto;
+    padding-block: var(--pl-spacing-xl);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.alert-danger {
+    margin-block-end: 16px;
+}

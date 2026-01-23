@@ -93,8 +93,8 @@ export function initLazyQuery<TResult = any>(params: InitQueryParams<TResult>) {
 }
 
 export const fileInfoGQL = gql`
-  query ($id: ID!, $path: String!) {
-    fileInfo(id: $id, path: $path) {
+  query ($id: ID!, $path: String!, $includeDirSize: Boolean = false) {
+    fileInfo(id: $id, path: $path, includeDirSize: $includeDirSize) {
       ... on FileInfo {
         path
         updatedAt
@@ -134,13 +134,33 @@ export const fileInfoGQL = gql`
   ${tagSubFragment}
 `
 
+export const pathStatGQL = gql`
+  query pathStat($path: String!) {
+    pathStat(path: $path) {
+      exists
+      isDir
+    }
+  }
+`
+
+export const pathStatsGQL = gql`
+  query pathStats($paths: [String!]!) {
+    pathStats(paths: $paths) {
+      path
+      exists
+      isDir
+    }
+  }
+`
+
 export const homeStatsGQL = gql`
   query {
     imageCount(query: "")
     audioCount(query: "")
     videoCount(query: "")
-    storageVolumes {
+    mounts {
       id
+      path
       totalBytes
       freeBytes
     }
@@ -203,20 +223,37 @@ export const filesSidebarCountsGQL = gql`
   }
 `
 
-export const storageVolumesGQL = gql`
+export const mountsGQL = gql`
   query {
-    storageVolumes {
+    mounts {
       id
       name
       alias
+      label
       mountPoint
       fsType
       totalBytes
       usedBytes
       freeBytes
-      removable
       remote
       driveType
+
+      parentDevice
+      path
+      partitionNum
+      uuid
+    }
+  }
+`
+
+export const disksGQL = gql`
+  query {
+    disks {
+      name
+      path
+      sizeBytes
+      removable
+      model
     }
   }
 `
@@ -224,6 +261,30 @@ export const storageVolumesGQL = gql`
 export const mediaSourceDirsGQL = gql`
   query {
     mediaSourceDirs
+  }
+`
+
+export const sessionsGQL = gql`
+  query {
+    sessions {
+      clientId
+      clientName
+      lastActive
+      createdAt
+      updatedAt
+    }
+  }
+`
+
+export const eventsGQL = gql`
+  query events($limit: Int!) {
+    events(limit: $limit) {
+      id
+      type
+      message
+      clientId
+      createdAt
+    }
   }
 `
 
@@ -346,6 +407,17 @@ export const deviceInfoGQL = gql`
     }
   }
   ${deviceInfoFragment}
+`
+
+export const appUpdateGQL = gql`
+  query {
+    appUpdate {
+      currentVersion
+      latestVersion
+      hasUpdate
+      url
+    }
+  }
 `
 
 export const uploadedChunksGQL = gql`

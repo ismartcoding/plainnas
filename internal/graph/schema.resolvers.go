@@ -32,6 +32,16 @@ func (r *mutationResolver) DeleteKeyValue(ctx context.Context, key string) (bool
 	return true, nil
 }
 
+// Logout is the resolver for the logout field.
+func (r *mutationResolver) Logout(ctx context.Context) (bool, error) {
+	return logout(ctx)
+}
+
+// RevokeSession is the resolver for the revokeSession field.
+func (r *mutationResolver) RevokeSession(ctx context.Context, clientID string) (bool, error) {
+	return revokeSession(ctx, clientID)
+}
+
 // SetMediaSourceDirs is the resolver for the setMediaSourceDirs field.
 func (r *mutationResolver) SetMediaSourceDirs(ctx context.Context, dirs []string) (bool, error) {
 	return setMediaSourceDirsModel(ctx, dirs)
@@ -229,22 +239,29 @@ func (r *mutationResolver) RemoveFromTags(ctx context.Context, typeArg model.Dat
 	return removeFromTags(typeArg, tagIds, query)
 }
 
-// SetStorageVolumeAlias is the resolver for the setStorageVolumeAlias field.
-func (r *mutationResolver) SetStorageVolumeAlias(ctx context.Context, id string, alias string) (bool, error) {
-	id = strings.TrimSpace(id)
-	if id == "" {
-		return false, fmt.Errorf("id is empty")
-	}
-	alias = strings.TrimSpace(alias)
-	if err := db.SetVolumeAlias(id, alias); err != nil {
-		return false, err
-	}
-	return true, nil
+// SetMountAlias is the resolver for the setMountAlias field.
+func (r *mutationResolver) SetMountAlias(ctx context.Context, id string, alias string) (bool, error) {
+	return setMountAlias(id, alias)
+}
+
+// FormatDisk is the resolver for the formatDisk field.
+func (r *mutationResolver) FormatDisk(ctx context.Context, path string) (bool, error) {
+	return formatDisk(ctx, path)
 }
 
 // App is the resolver for the app field.
 func (r *queryResolver) App(ctx context.Context) (*model.App, error) {
 	return app(ctx)
+}
+
+// Sessions is the resolver for the sessions field.
+func (r *queryResolver) Sessions(ctx context.Context) ([]*model.Session, error) {
+	return listSessions(ctx)
+}
+
+// Events is the resolver for the events field.
+func (r *queryResolver) Events(ctx context.Context, limit int) ([]*model.Event, error) {
+	return listEvents(ctx, limit)
 }
 
 // FavoriteFolders is the resolver for the favoriteFolders field.
@@ -257,9 +274,14 @@ func (r *queryResolver) GetTasks(ctx context.Context) ([]*model.FileTask, error)
 	return getTasksModel(ctx)
 }
 
-// StorageVolumes is the resolver for the storageVolumes field.
-func (r *queryResolver) StorageVolumes(ctx context.Context) ([]*model.StorageVolume, error) {
-	return ListStorageVolumes()
+// Mounts is the resolver for the mounts field.
+func (r *queryResolver) Mounts(ctx context.Context) ([]*model.StorageMount, error) {
+	return ListMounts()
+}
+
+// Disks is the resolver for the disks field.
+func (r *queryResolver) Disks(ctx context.Context) ([]*model.StorageDisk, error) {
+	return ListStorageDisks()
 }
 
 // MediaSourceDirs is the resolver for the mediaSourceDirs field.
@@ -325,9 +347,24 @@ func (r *queryResolver) DeviceInfo(ctx context.Context) (*model.DeviceInfo, erro
 	return buildDeviceInfo()
 }
 
+// AppUpdate is the resolver for the appUpdate field.
+func (r *queryResolver) AppUpdate(ctx context.Context) (*model.AppUpdate, error) {
+	return buildAppUpdate(ctx)
+}
+
+// PathStat is the resolver for the pathStat field.
+func (r *queryResolver) PathStat(ctx context.Context, path string) (*model.PathStat, error) {
+	return pathStatModel(path)
+}
+
+// PathStats is the resolver for the pathStats field.
+func (r *queryResolver) PathStats(ctx context.Context, paths []string) ([]*model.PathStatResult, error) {
+	return pathStatsModel(paths)
+}
+
 // FileInfo is the resolver for the fileInfo field.
-func (r *queryResolver) FileInfo(ctx context.Context, id string, path string) (*model.FileInfo, error) {
-	return buildFileInfo(id, path)
+func (r *queryResolver) FileInfo(ctx context.Context, id string, path string, includeDirSize *bool) (*model.FileInfo, error) {
+	return buildFileInfo(ctx, id, path, includeDirSize != nil && *includeDirSize)
 }
 
 // Files is the resolver for the files field.

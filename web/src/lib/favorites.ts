@@ -1,4 +1,4 @@
-import type { IFavoriteFolder, IStorageVolume } from './interfaces'
+import type { IFavoriteFolder, IStorageMount } from './interfaces'
 import { getFullPath } from './file'
 
 export function getFavoriteFolderFullPath(favoriteFolder: IFavoriteFolder): string {
@@ -7,7 +7,7 @@ export function getFavoriteFolderFullPath(favoriteFolder: IFavoriteFolder): stri
 
 export function getFavoriteDisplayTitle(
     favoriteFolder: IFavoriteFolder,
-    volumes: IStorageVolume[],
+    volumes: IStorageMount[],
     t: (key: string, ...args: any[]) => string
 ): string {
     const alias = (favoriteFolder.alias || '').trim()
@@ -25,7 +25,7 @@ export function getFavoriteDisplayTitle(
     const volumeTitle = volume
         ? volume.name === '/'
             ? t('internal_storage')
-            : (volume.name || volume.mountPoint)
+            : (volume.name || volume.mountPoint || favoriteFolder.rootPath)
         : (favoriteFolder.rootPath || '').replace(/\/+$/, '')
     const rel = (favoriteFolder.relativePath || '').replace(/^\/+/, '')
     return rel ? `${volumeTitle}/${rel}` : volumeTitle

@@ -57,6 +57,7 @@ func requireAuth() gin.HandlerFunc {
 					c.AbortWithStatusJSON(http.StatusBadRequest, createErrorResponse("Decryption failed"))
 					return
 				}
+				_ = db.TouchSessionLastActive(session)
 				log.Debugf("Request body: %s", string(decryptedBody))
 				c.Request.Body = io.NopCloser(bytes.NewBuffer(decryptedBody))
 				blw := &bodyLogWriter{body: bytes.NewBufferString(""), ResponseWriter: c.Writer}

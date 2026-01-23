@@ -1,33 +1,33 @@
 <template>
   <div class="top-app-bar">
+    <div class="title">{{ t('media_sources_desc') }}</div>
     <div class="actions">
-      <v-outlined-button v-if="selectedDirs.length" value="reset" @click="selectAll">{{ t('clear_selection')
-        }}</v-outlined-button>
-      <v-filled-button value="save" @click="save">{{ t('save') }}</v-filled-button>
+      <v-filled-button value="save" :loading="saving" @click="save">{{ t('save') }}</v-filled-button>
     </div>
   </div>
 
-  <div class="scroll-content settings-page settings-page--mobile-top">
-    <p class="page-desc">{{ t('media_sources_desc') }}</p>
-
+  <div class="scroll-content settings-page">
     <div class="picker">
       <div class="selected">
         <div class="selected-row">
           <div class="selected-chips">
             <v-filter-chip v-if="isAll" :label="`${t('all')} (/)`" :selected="true" @click="beginSelect" />
-            <v-input-chip v-for="dir in selectedDirs" :key="dir" :label="dir" :remove-only="true"
+            <v-input-chip
+v-for="dir in selectedDirs" :key="dir" :label="dir" :remove-only="true"
               :aria-label-remove="t('remove')" @remove="removeDir(dir)" />
           </div>
         </div>
       </div>
 
-      <DirectoryBrowser :volumes="volumes" :active-root="rootPath" :current-dir="currentDir" :can-go-up="canGoUp"
+      <DirectoryBrowser
+:volumes="volumes" :active-root="rootPath" :current-dir="currentDir" :can-go-up="canGoUp"
         :listing="listing" :dir-items="dirItems" :dir-name="dirName" :dir-disabled="isCovered"
         :volume-title="volumeTitle" :volume-used-percent="volumeUsedPercent"
-        :volume-count="(v) => formatUsedTotalBytes(v.usedBytes, v.totalBytes)" :browser-min-height-px="260"
+        :volume-count="(v) => formatUsedTotalBytes(Number(v.usedBytes || 0), Number(v.totalBytes || 0))" :browser-min-height-px="260"
         :list-min-height-px="160" @select-root="selectRoot" @go-up="goUp" @enter-dir="enterDir">
         <template #toolbar-actions>
-          <v-icon-button v-if="currentDir && !isCovered(currentDir)" v-tooltip="t('add')"
+          <v-icon-button
+v-if="currentDir && !isCovered(currentDir)" v-tooltip="t('add')"
             @click.stop="addDir(currentDir)">
             <i-material-symbols:add-rounded />
           </v-icon-button>
@@ -53,23 +53,24 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { buildQuery, type IFilterField } from '@/lib/search'
-import { filesGQL, initLazyQuery, initQuery, storageVolumesGQL } from '@/lib/api/query'
-import type { IStorageVolume } from '@/lib/interfaces'
+import { filesGQL, initLazyQuery, initQuery, mountsGQL } from '@/lib/api/query'
+import type { IStorageMount } from '@/lib/interfaces'
 import { getFileName } from '@/lib/api/file'
 import { formatUsedTotalBytes } from '@/lib/format'
 import toast from '@/components/toaster'
 import { useMediaSourceDirs } from '@/hooks/media'
 import { getStorageVolumeTitle, sortStorageVolumesByTitle } from '@/lib/volumes'
 import DirectoryBrowser from '@/components/DirectoryBrowser.vue'
+import { shouldHideSystemPath } from '@/lib/system-folders'
 
 const { t } = useI18n()
-const { sourceDirs, save: saveDirs } = useMediaSourceDirs()
+const { sourceDirs, save: saveDirs, saving } = useMediaSourceDirs()
 
 const selectedDirs = ref<string[]>([...(sourceDirs.value ?? [])])
 const dirty = ref(false)
 const isAll = computed(() => selectedDirs.value.length === 0)
 
-const volumes = ref<IStorageVolume[]>([])
+const volumes = ref<IStorageMount[]>([])
 const rootPath = ref('')
 const relativePath = ref('')
 const dirItems = ref<string[]>([])
@@ -128,7 +129,7 @@ function dirName(path: string) {
   return getFileName(path) || path
 }
 
-function volumeUsedPercent(v: IStorageVolume) {
+function volumeUsedPercent(v: IStorageMount) {
   const total = Number(v.totalBytes || 0)
   const used = Number(v.usedBytes || 0)
   if (!total) return 0
@@ -137,7 +138,7 @@ function volumeUsedPercent(v: IStorageVolume) {
   return Math.max(0, Math.min(100, pct))
 }
 
-function volumeTitle(v: IStorageVolume) {
+function volumeTitle(v: IStorageMount) {
   return getStorageVolumeTitle(v, t)
 }
 
@@ -159,11 +160,6 @@ function goUp() {
   } else {
     relativePath.value = rel.slice(0, idx)
   }
-}
-
-function selectAll() {
-  dirty.value = true
-  selectedDirs.value = []
 }
 
 function addDir(dir: string) {
@@ -204,14 +200,15 @@ watch(sourceDirs, (dirs) => {
   selectedDirs.value = [...(dirs ?? [])]
 })
 
-initQuery<{ storageVolumes: IStorageVolume[] }>({
-  document: storageVolumesGQL,
+initQuery<{ mounts: IStorageMount[] }>({
+  document: mountsGQL,
   handle: (data, error) => {
     if (error) {
       toast(t(error), 'error')
       return
     }
-    volumes.value = sortStorageVolumesByTitle(data?.storageVolumes ?? [], t)
+    const mountedOnly = (data?.mounts ?? []).filter((m) => !String(m?.path ?? '').trim())
+    volumes.value = sortStorageVolumesByTitle(mountedOnly, t)
     if (!rootPath.value) {
       rootPath.value = volumes.value[0]?.mountPoint || '/'
     }
@@ -233,7 +230,7 @@ const { loading: listing, fetch: fetchDirs } = initLazyQuery<{ files: Array<{ pa
       return
     }
     const files = (data?.files ?? []) as Array<{ path: string; isDir: boolean }>
-    dirItems.value = files.filter((f) => f.isDir).map((f) => f.path)
+    dirItems.value = files.filter((f) => f.isDir && !shouldHideSystemPath(f.path, true)).map((f) => f.path)
   },
 })
 
@@ -273,7 +270,5 @@ watch([rootPath, relativePath], () => {
     flex-direction: column;
     align-items: stretch;
   }
-
-  /* padding handled by global .settings-page */
 }
 </style>

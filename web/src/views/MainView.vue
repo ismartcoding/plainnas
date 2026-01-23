@@ -78,17 +78,19 @@ import { useMainStore } from '@/stores/main'
 import { useRouter } from 'vue-router'
 import { useTempStore } from '@/stores/temp'
 import { storeToRefs } from 'pinia'
-import { appGQL, initQuery } from '@/lib/api/query'
+import { appGQL, getTasksGQL, initQuery } from '@/lib/api/query'
 import emitter from '@/plugins/eventbus'
 import { tokenToKey } from '@/lib/api/file'
 import type { IApp, IMediaItemsActionedEvent } from '@/lib/interfaces'
 import { useRightSidebarResize } from '@/hooks/sidebar'
 import HeaderSearch from '@/components/HeaderSearch.vue'
+import { useTasksStore } from '@/stores/tasks'
 
 const isTablet = inject('isTablet')
 const store = useMainStore()
 const router = useRouter()
 const tempStore = useTempStore()
+const tasksStore = useTasksStore()
 const { app, urlTokenKey } = storeToRefs(tempStore)
 
 const loading = ref(true)
@@ -183,6 +185,18 @@ function onScanProgress(data: any) {
 }
 
 onMounted(() => {
+  // Fetch task list only for authenticated sessions.
+  const token = localStorage.getItem('auth_token') ?? ''
+  if (token) {
+    initQuery({
+      document: getTasksGQL,
+      handle: (data: any, error: string) => {
+        if (error) return
+        tasksStore.setFileTasks(data?.getTasks ?? [])
+      },
+    })
+  }
+  emitter.on('file_task_progress', tasksStore.handleFileTaskProgress)
   emitter.on('refetch_app', refetchAppHandler)
   emitter.on('play_audio', playAudioHandler)
   emitter.on('media_items_actioned', mediaItemsActionedHandler)

@@ -1,29 +1,40 @@
-import type { IStorageVolume } from '@/lib/interfaces'
+import type { IStorageMount } from '@/lib/interfaces'
 
-export type TranslateFn = (key: string) => string
+export type TranslateFn = (key: string, params?: Record<string, any>) => string
 
-export function getStorageVolumeBaseTitle(v: IStorageVolume, t: TranslateFn): string {
-    const name = String(v?.name ?? '').trim()
+export function getStorageVolumeBaseTitle(v: IStorageMount, t: TranslateFn): string {
     const mountPoint = String(v?.mountPoint ?? '').trim()
-
     // For the root mount we show a localized name.
-    if (name === '/' || mountPoint === '/') return t('internal_storage')
-    return name || mountPoint || '/'
+    if (mountPoint === '/') return t('internal_storage')
+
+    const path = String(v?.path ?? '').trim()
+    const label = String(v?.label ?? '').trim()
+    if (label) return label
+
+    const fs = String(v?.fsType ?? '').trim().toLowerCase()
+    const size = Number(v?.totalBytes ?? 0)
+    if (fs === 'vfat' && size > 0 && size < 2 * 1000 * 1000 * 1000) return t('efi_partition')
+
+    const mp = String(v?.mountPoint ?? '').trim()
+    if (mp === '/') return t('root_partition')
+
+    if (typeof v.partitionNum === 'number') return t('partition_x', { n: v.partitionNum })
+    return String(v?.name ?? '').trim() || path
 }
 
-export function getStorageVolumeTitle(v: IStorageVolume, t: TranslateFn): string {
+export function getStorageVolumeTitle(v: IStorageMount, t: TranslateFn): string {
     const alias = String(v?.alias ?? '').trim()
     return alias ? alias : getStorageVolumeBaseTitle(v, t)
 }
 
-function isInternalStorageVolume(v: IStorageVolume): boolean {
+function isInternalStorageVolume(v: IStorageMount): boolean {
     const name = String(v?.name ?? '').trim()
     const mountPoint = String(v?.mountPoint ?? '').trim()
     return name === '/' || mountPoint === '/'
 }
 
 // Sort by what the UI shows (title), not raw fields.
-export function sortStorageVolumesByTitle(volumes: IStorageVolume[], t: TranslateFn): IStorageVolume[] {
+export function sortStorageVolumesByTitle(volumes: IStorageMount[], t: TranslateFn): IStorageMount[] {
     return [...(volumes ?? [])].sort((a, b) => {
         const ai = isInternalStorageVolume(a)
         const bi = isInternalStorageVolume(b)

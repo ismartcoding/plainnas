@@ -97,11 +97,15 @@ const props = withDefaults(
     text: string
     tokens: Token[]
     placeholder?: string
+    // When true, Enter triggers submit even if dropdown is open.
+    // This matches the common "press Enter to search" expectation.
+    enterSubmits?: boolean
     keyOptions: TokenKey[]
     valueOptions?: Record<string, ValueOption[]>
   }>(),
   {
     placeholder: '',
+    enterSubmits: false,
     valueOptions: () => ({}),
   }
 )
@@ -139,6 +143,7 @@ function keyLabel(key: string) {
   if (key === 'tag') return t('tag')
   if (key === 'bucket') return t('folder')
   if (key === 'history') return t('search_key_history')
+  if (key === 'file_size') return t('file_size')
   return key
 }
 
@@ -146,6 +151,7 @@ function keyDescription(key: string) {
   if (key === 'tag') return t('search_filter_by_tag')
   if (key === 'bucket') return t('search_filter_by_folder')
   if (key === 'history') return ''
+  if (key === 'file_size') return t('search_filter_by_file_size')
   return ''
 }
 
@@ -153,6 +159,9 @@ function displayValue(key: string, raw: string) {
   const v = raw.toLowerCase()
   if (key === 'trash') {
     return v === 'true' ? 'In Trash' : 'Not in Trash'
+  }
+  if (key === 'file_size') {
+    return raw
   }
   return raw
 }
@@ -395,7 +404,7 @@ function selectValue(it: ValueItem) {
   }
 
   // Unique keys behave like a single filter.
-  const uniqueKeys = new Set(['bucket', 'trash'])
+  const uniqueKeys = new Set(['bucket', 'trash', 'file_size'])
   if (uniqueKeys.has(it.key)) {
     removeTokensByKey(it.key)
   }
@@ -474,6 +483,13 @@ function onKeydown(e: KeyboardEvent) {
 
   if (menuLevel.value !== 'none' && (e.key === 'Enter' || e.key === 'Tab')) {
     e.preventDefault()
+
+    // Optional behavior: pressing Enter submits instead of selecting from the dropdown.
+    if (e.key === 'Enter' && props.enterSubmits) {
+      emitEnter()
+      return
+    }
+
     if (menuLevel.value === 'key') {
       const it = keyItems.value[activeIndex.value]
       if (it) selectKey(it.key)

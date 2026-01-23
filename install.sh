@@ -15,6 +15,7 @@ NC='\033[0m' # No Color
 REPO="ismartcoding/plainnas"
 INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="plainnas"
+UPDATER_NAME="plainnas-updater"
 
 function error_exit() {
     echo "[PlainNAS] ERROR: $1" >&2
@@ -49,11 +50,13 @@ function download_binary() {
     unzip -o plainnas.zip || error_exit "Failed to unzip binary."
     rm -f plainnas.zip
     mv plainnas-linux-$arch "$BINARY_NAME" || error_exit "Failed to rename binary."
-    chmod +x "$BINARY_NAME"
+    mv plainnas-updater-linux-$arch "$UPDATER_NAME" || error_exit "Failed to rename updater."
+    chmod +x "$BINARY_NAME" "$UPDATER_NAME"
 }
 
 function install_binary() {
     sudo mv "$BINARY_NAME" "$INSTALL_DIR/" || error_exit "Failed to move binary to $INSTALL_DIR."
+    sudo mv "$UPDATER_NAME" "$INSTALL_DIR/" || error_exit "Failed to move updater to $INSTALL_DIR."
     echo "[PlainNAS] Installed $BINARY_NAME to $INSTALL_DIR."
 }
 

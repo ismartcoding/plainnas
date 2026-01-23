@@ -23,11 +23,25 @@
           <span class="title">{{ t('lan_share') }}</span>
         </li>
 
+        <li :class="{ active: isActive('sessions') }" @click.prevent="go('sessions')">
+          <span class="icon" aria-hidden="true">
+            <i-lucide:users />
+          </span>
+          <span class="title">{{ t('sessions') }}</span>
+        </li>
+
+        <li :class="{ active: isActive('events') }" @click.prevent="go('events')">
+          <span class="icon" aria-hidden="true">
+            <i-lucide:history />
+          </span>
+          <span class="title">{{ t('events') }}</span>
+        </li>
+
         <li :class="{ active: isActive('device-info') }" @click.prevent="go('device-info')">
           <span class="icon" aria-hidden="true">
             <i-lucide:smartphone />
           </span>
-          <span class="title">{{ t('device_info') }}</span>
+          <span class="title">{{ t('about') }}</span>
         </li>
       </ul>
     </template>

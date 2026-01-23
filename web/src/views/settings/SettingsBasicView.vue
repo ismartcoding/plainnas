@@ -6,14 +6,13 @@
   </div>
 
   <div class="scroll-content settings-page">
-    <p class="page-desc">{{ t('basic_settings_desc') }}</p>
-
-    <section class="card settings-card">
-      <h5 class="card-title settings-card-title">{{ t('device_name') }}</h5>
-      <div class="card-body settings-card-body">
+    <section class="card border-card">
+      <h5 class="card-title">{{ t('device_name') }}</h5>
+      <div class="card-body">
         <p class="subtle">{{ t('device_name_desc') }}</p>
 
-        <v-text-field v-model="deviceName" class="form-control" :label="t('device_name')" autocomplete="off"
+        <v-text-field
+v-model="deviceName" class="form-control" :label="t('device_name')" autocomplete="off"
           :placeholder="t('device_name_placeholder')" :error="(submitAttempted || dirty) && !!deviceNameError"
           :error-text="(submitAttempted || dirty) && deviceNameError ? t(deviceNameError) : ''" @keyup.enter="save" />
         <div class="settings-kv">
@@ -131,5 +130,3 @@ async function save() {
   await doSave()
 }
 </script>
-
-<style scoped></style>

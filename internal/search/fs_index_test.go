@@ -73,7 +73,7 @@ func TestSearchIndex_KeywordDoesNotMatchPathSegments(t *testing.T) {
 	p.setMeta(metas[0])
 	buildTestIndexes(t, filepath.Join(tmpDir, "searchidx"), metas)
 
-	got, err := SearchIndex("a", "", 0, 50)
+	got, err := SearchIndex("a", "", 0, 50, "", 0)
 	if err != nil {
 		t.Fatalf("SearchIndex: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestSearchIndex_KeywordMatchesBasename(t *testing.T) {
 	p.setMeta(metas[0])
 	buildTestIndexes(t, filepath.Join(tmpDir, "searchidx"), metas)
 
-	got, err := SearchIndex("b", "", 0, 50)
+	got, err := SearchIndex("b", "", 0, 50, "", 0)
 	if err != nil {
 		t.Fatalf("SearchIndex: %v", err)
 	}
@@ -123,7 +123,7 @@ func TestSearchIndex_PathExactFile(t *testing.T) {
 	p.setMeta(metas[0])
 	buildTestIndexes(t, filepath.Join(tmpDir, "searchidx"), metas)
 
-	got, err := SearchIndex("/DATA/Videos/IMG_1048.mp4", "", 0, 50)
+	got, err := SearchIndex("/DATA/Videos/IMG_1048.mp4", "", 0, 50, "", 0)
 	if err != nil {
 		t.Fatalf("SearchIndex: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestSearchIndex_PathDirListsDescendants(t *testing.T) {
 		t.Fatalf("writefile: %v", err)
 	}
 
-	got, err := SearchIndex(filepath.ToSlash(root), "", 0, 50)
+	got, err := SearchIndex(filepath.ToSlash(root), "", 0, 50, "", 0)
 	if err != nil {
 		t.Fatalf("SearchIndex: %v", err)
 	}
@@ -166,7 +166,7 @@ func TestSearchIndex_PathAbsoluteFile_NoIndex(t *testing.T) {
 		t.Fatalf("writefile: %v", err)
 	}
 
-	got, err := SearchIndex(filepath.ToSlash(f), "", 0, 10)
+	got, err := SearchIndex(filepath.ToSlash(f), "", 0, 10, "", 0)
 	if err != nil {
 		t.Fatalf("SearchIndex: %v", err)
 	}

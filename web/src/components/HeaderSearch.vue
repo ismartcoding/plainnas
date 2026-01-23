@@ -3,6 +3,7 @@
   <div class="header-search">
     <TokenSearchField
 ref="inputRef" class="header-search-field" :text="text" :tokens="uiTokens"
+      enter-submits
       :placeholder="resolvedPlaceholder" :key-options="keyOptions" :value-options="valueOptions"
       @update:text="onFreeTextChange" @update:tokens="onUiTokensChange" @enter="submitFromHeader"
       @history:select="applyHistoryQ" @history:delete="deleteHistoryItem" @history:clear="clearHistoryForPage" />
@@ -17,6 +18,7 @@ import { useMainStore } from '@/stores/main'
 import { replacePath } from '@/plugins/router'
 import { buildQuery, parseQuery } from '@/lib/search'
 import { decodeBase64, encodeBase64 } from '@/lib/strutil'
+import { isEditableTarget } from '@/lib/dom'
 import type { IBucket, IFilter, IFileFilter, ITag, IType } from '@/lib/interfaces'
 import { useSearch as useMediaSearch } from '@/hooks/search'
 import { useSearch as useFilesSearch } from '@/hooks/files'
@@ -90,6 +92,7 @@ const filesLocalFilter: IFileFilter = reactive({
   relativePath: '',
   trash: false,
   text: '',
+  fileSize: undefined,
 })
 
 const routeGroup = computed(() => String(router.currentRoute.value.meta?.group ?? ''))
@@ -215,6 +218,11 @@ function formatHistoryLabel(decoded: string) {
       continue
     }
 
+    if (f.name === 'file_size') {
+      parts.push(`${t('file_size')}: ${f.op}${f.value}`)
+      continue
+    }
+
     if (f.value) parts.push(`${f.name}:${f.value}`)
   }
 
@@ -235,12 +243,23 @@ const keyOptions = computed(() => {
   if (showMediaFilters.value) return hasHistory ? ['history', 'tag', 'bucket'] : ['tag', 'bucket']
   if (showFilesFilters.value) {
     if (isFilesTrashPage.value) return hasHistory ? ['history'] : []
-    return hasHistory ? ['history'] : []
+    return hasHistory ? ['history', 'file_size'] : ['file_size']
   }
   return hasHistory ? ['history'] : []
 })
 
-const valueOptions = computed<Record<string, string[]>>(() => {
+const fileSizeOptions = computed(() => {
+  return [
+    { value: '>1MB', label: '> 1MB', description: t('search_file_size_greater_than_1mb') },
+    { value: '>10MB', label: '> 10MB', description: t('search_file_size_greater_than_10mb') },
+    { value: '>100MB', label: '> 100MB', description: t('search_file_size_greater_than_100mb') },
+    { value: '>1GB', label: '> 1GB', description: t('search_file_size_greater_than_1gb') },
+    { value: '<1MB', label: '< 1MB', description: t('search_file_size_less_than_1mb') },
+    { value: '<100KB', label: '< 100KB', description: t('search_file_size_less_than_100kb') },
+  ]
+})
+
+const valueOptions = computed<Record<string, any[]>>(() => {
   const base: Record<string, any> = {}
 
   if ((historyQ.value ?? []).length > 0) {
@@ -250,6 +269,10 @@ const valueOptions = computed<Record<string, string[]>>(() => {
   if (showMediaFilters.value) {
     base.tag = (mediaTags.value ?? []).map((t) => t.name)
     base.bucket = (sortedMediaBuckets.value ?? []).map((b) => b.name)
+  }
+
+  if (showFilesFilters.value) {
+    base.file_size = fileSizeOptions.value
   }
 
   return base
@@ -273,6 +296,9 @@ const uiTokens = computed<UiToken[]>(() => {
   }
 
   if (showFilesFilters.value) {
+    if (filesLocalFilter.fileSize) {
+      tokens.push({ key: 'file_size', value: filesLocalFilter.fileSize })
+    }
     return tokens
   }
   return tokens
@@ -302,6 +328,13 @@ function onUiTokensChange(tokens: UiToken[]) {
     mediaLocalFilter.tagIds = nextTagIds
     mediaLocalFilter.bucketId = bucket?.id
     mediaLocalFilter.text = text.value
+    return
+  }
+
+  if (showFilesFilters.value) {
+    const fileSizeTok = tokens.find((it) => it.key === 'file_size')
+    filesLocalFilter.fileSize = fileSizeTok?.value
+    filesLocalFilter.text = text.value
     return
   }
 }
@@ -496,7 +529,12 @@ function submitFromHeader() {
     }
 
     if (showFilesFilters.value) {
-      const q = buildNextQ(text.value, isFilesTrashPage.value ? true : filesLocalFilter.showHidden)
+      const nextFilter: IFileFilter = {
+        ...filesLocalFilter,
+        text: text.value,
+        showHidden: isFilesTrashPage.value ? true : filesLocalFilter.showHidden,
+      }
+      const q = buildFilesQ(nextFilter)
       replaceCurrentRouteQ(q)
       return
     }
@@ -505,13 +543,6 @@ function submitFromHeader() {
     return
   }
   applyPanel()
-}
-
-function isEditableTarget(target: EventTarget | null) {
-  const el = target as HTMLElement | null
-  if (!el) return false
-  const tag = el.tagName?.toLowerCase()
-  return tag === 'input' || tag === 'textarea' || (el as any).isContentEditable
 }
 
 function onGlobalKeydown(event: KeyboardEvent) {

@@ -2,6 +2,7 @@ package graph
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -13,16 +14,41 @@ import (
 )
 
 const volumeIDRemotePrefix = "remote:"
+const volumeIDFSUUIDPrefix = "fsuuid:"
+const volumeIDDevPrefix = "dev:"
+const mountIDPartitionPrefix = "part:"
 
-// ListStorageVolumes enumerates mounted storage volumes and enriches them with
-// physical device capacity when possible to avoid misleading totals (e.g. LVM).
-func ListStorageVolumes() ([]*model.StorageVolume, error) {
-	volumes := []*model.StorageVolume{}
+type volumeDevMeta struct {
+	PKName string
+	Label  string
+}
+
+// ListMounts returns both mounted volumes and disk partitions.
+//
+// The list is intentionally "flat"; the UI is expected to correlate mounts with
+// disks via StorageMount.parentDevice and StorageMount.path.
+func ListMounts() ([]*model.StorageMount, error) {
+	mounted, err := listMountedVolumes()
+	if err != nil {
+		return mounted, err
+	}
+	parts, perr := listDiskPartitions()
+	if perr != nil {
+		// Best-effort: still return mounted volumes.
+		return mounted, nil
+	}
+	return append(mounted, parts...), nil
+}
+
+// listMountedVolumes enumerates mounted storage volumes from /proc/mounts.
+func listMountedVolumes() ([]*model.StorageMount, error) {
+	volumes := []*model.StorageMount{}
 
 	// Load alias mapping once
 	aliasMap := db.GetVolumeAliasMap()
 
 	devToUUID := buildResolvedDevPathToUUIDMap()
+	devMeta := buildLsblkVolumeDevMetaMap()
 
 	file, err := os.Open("/proc/mounts")
 	if err != nil {
@@ -32,7 +58,7 @@ func ListStorageVolumes() ([]*model.StorageVolume, error) {
 
 	scanner := bufio.NewScanner(file)
 	seenSrc := map[string]struct{}{}
-	byTarget := map[string]*model.StorageVolume{}
+	byTarget := map[string]*model.StorageMount{}
 	targetOrder := make([]string, 0, 16)
 	skipTypes := map[string]struct{}{
 		"proc": {}, "sysfs": {}, "devpts": {}, "tmpfs": {}, "devtmpfs": {}, "securityfs": {},
@@ -97,22 +123,23 @@ func ListStorageVolumes() ([]*model.StorageVolume, error) {
 		free := uint64(stat.Bfree) * bsize
 		used := total - free
 
-		removable := false
-		if isBlock {
-			removable = isDeviceRemovable(src)
-		}
-
 		// Stable ID
 		id := ""
+		fsUUID := ""
+		devResolved := ""
 		if isRemote {
 			id = volumeIDRemotePrefix + src
 		} else if strings.HasPrefix(src, "/dev/") {
-			devResolved, err := filepath.EvalSymlinks(src)
-			if err != nil || devResolved == "" {
-				devResolved = src
+			resolved, err := filepath.EvalSymlinks(src)
+			if err != nil || resolved == "" {
+				resolved = src
 			}
+			devResolved = resolved
 			if uuid := devToUUID[devResolved]; uuid != "" {
-				id = uuid
+				fsUUID = uuid
+				id = volumeIDFSUUIDPrefix + uuid
+			} else {
+				id = volumeIDDevPrefix + devResolved
 			}
 		}
 		// Fallback: still return something non-empty even if UUID resolution fails.
@@ -120,17 +147,35 @@ func ListStorageVolumes() ([]*model.StorageVolume, error) {
 			id = src
 		}
 
-		v := &model.StorageVolume{
+		mp := target
+		ft := fstype
+		used64 := int64(used)
+		free64 := int64(free)
+		dt := strings.TrimSpace(getDriveType(src, isRemote))
+		var dtPtr *string
+		if dt != "" {
+			dtt := dt
+			dtPtr = &dtt
+		}
+
+		v := &model.StorageMount{
 			ID:         id,
 			Name:       filepath.Base(target),
-			MountPoint: target,
-			FsType:     fstype,
+			MountPoint: &mp,
+			FsType:     &ft,
 			TotalBytes: int64(total),
-			UsedBytes:  int64(used),
-			FreeBytes:  int64(free),
-			Removable:  removable,
+			UsedBytes:  &used64,
+			FreeBytes:  &free64,
 			Remote:     isRemote,
-			DriveType:  getDriveType(src, isRemote),
+			DriveType:  dtPtr,
+		}
+		if fsUUID != "" {
+			u := fsUUID
+			v.UUID = &u
+		}
+
+		if isBlock {
+			applyVolumeBlockMeta(v, src, devMeta)
 		}
 
 		if a, ok := aliasMap[v.ID]; ok && strings.TrimSpace(a) != "" {
@@ -157,6 +202,191 @@ func ListStorageVolumes() ([]*model.StorageVolume, error) {
 	}
 
 	return volumes, nil
+}
+
+// listDiskPartitions returns partitions discovered from lsblk. Entries returned
+// from here use an ID namespace prefix ("part:") to avoid colliding with mounted
+// volume IDs.
+func listDiskPartitions() ([]*model.StorageMount, error) {
+	parsed, err := runLsblkJSON([]string{
+		"NAME", "PATH", "TYPE", "SIZE", "FSTYPE", "UUID", "LABEL", "MOUNTPOINT", "PKNAME", "PARTN",
+	})
+	if err != nil || parsed == nil {
+		return []*model.StorageMount{}, err
+	}
+
+	parts := make([]*model.StorageMount, 0, 32)
+	for _, d := range parsed.BlockDevices {
+		if strings.TrimSpace(d.Type) != "disk" {
+			continue
+		}
+		if !isUserVisibleDiskName(strings.TrimSpace(d.Name)) {
+			continue
+		}
+		for _, c := range d.Children {
+			if strings.TrimSpace(c.Type) != "part" {
+				continue
+			}
+			name := strings.TrimSpace(c.Name)
+			path := strings.TrimSpace(c.Path)
+			if path == "" && name != "" {
+				path = filepath.Join("/dev", name)
+			}
+			if strings.TrimSpace(path) == "" {
+				continue
+			}
+
+			sizeBytes := int64(0)
+			if v, err := c.SizeBytes.Int64(); err == nil {
+				sizeBytes = v
+			}
+
+			var fsTypePtr *string
+			if v := strings.TrimSpace(c.Fstype); v != "" {
+				vv := v
+				fsTypePtr = &vv
+			}
+			var mountPointPtr *string
+			if v := strings.TrimSpace(c.Mountpoint); v != "" {
+				vv := v
+				mountPointPtr = &vv
+			}
+			var labelPtr *string
+			if v := strings.TrimSpace(c.Label); v != "" {
+				vv := v
+				labelPtr = &vv
+			}
+			var uuidPtr *string
+			if v := strings.TrimSpace(c.UUID); v != "" {
+				vv := v
+				uuidPtr = &vv
+			}
+			var parentPtr *string
+			if v := strings.TrimSpace(c.PKName); v != "" {
+				vv := v
+				parentPtr = &vv
+			}
+
+			idSuffix := ""
+			if uuidPtr != nil && strings.TrimSpace(*uuidPtr) != "" {
+				idSuffix = strings.TrimSpace(*uuidPtr)
+			} else {
+				idSuffix = path
+			}
+			id := mountIDPartitionPrefix + idSuffix
+
+			p := &model.StorageMount{
+				ID:   id,
+				Name: name,
+				Path: func() *string { vv := path; return &vv }(),
+				PartitionNum: func() *int {
+					if n, ok := parseJSONInt(c.PartN); ok && n > 0 {
+						nn := n
+						return &nn
+					}
+					return nil
+				}(),
+				Label:        labelPtr,
+				UUID:         uuidPtr,
+				MountPoint:   mountPointPtr,
+				FsType:       fsTypePtr,
+				TotalBytes:   sizeBytes,
+				Remote:       false,
+				ParentDevice: parentPtr,
+			}
+			parts = append(parts, p)
+		}
+	}
+
+	return parts, nil
+}
+
+func buildLsblkVolumeDevMetaMap() map[string]volumeDevMeta {
+	// Best-effort: if lsblk isn't available or fails, we'll return empty mapping.
+	m := map[string]volumeDevMeta{}
+
+	parsed, err := runLsblkJSON([]string{"NAME", "PATH", "TYPE", "PKNAME", "PARTN", "LABEL"})
+	if err != nil || parsed == nil {
+		return m
+	}
+
+	var walk func(d lsblkDevice)
+	walk = func(d lsblkDevice) {
+		path := strings.TrimSpace(d.Path)
+		if path != "" {
+			m[path] = volumeDevMeta{
+				PKName: strings.TrimSpace(d.PKName),
+				Label:  strings.TrimSpace(d.Label),
+			}
+		}
+		for _, c := range d.Children {
+			walk(c)
+		}
+	}
+	for _, d := range parsed.BlockDevices {
+		walk(d)
+	}
+
+	return m
+}
+
+func applyVolumeBlockMeta(v *model.StorageMount, src string, meta map[string]volumeDevMeta) {
+	if v == nil {
+		return
+	}
+	// Resolve /dev/disk/by-uuid symlinks etc.
+	resolved, err := filepath.EvalSymlinks(src)
+	if err != nil || resolved == "" {
+		resolved = src
+	}
+	if !strings.HasPrefix(resolved, "/dev/") {
+		return
+	}
+	devName := strings.TrimPrefix(resolved, "/dev/")
+	base := baseBlockDeviceName(devName)
+
+	// Fill from lsblk when available.
+	if m, ok := meta[resolved]; ok {
+		if m.PKName != "" {
+			pk := m.PKName
+			v.ParentDevice = &pk
+		}
+		if v.Label == nil {
+			lbl := strings.TrimSpace(m.Label)
+			if lbl != "" {
+				v.Label = &lbl
+			}
+		}
+	}
+
+	// Best-effort fallback / normalization so UI can always group a local volume under a disk.
+	// - For partitions: ParentDevice should be the parent disk (e.g. "sdb").
+	// - For disk mounts: ParentDevice will be the disk itself (e.g. "sdb").
+	if v.ParentDevice == nil {
+		p := base
+		if p == "" {
+			p = devName
+		}
+		if p != "" {
+			v.ParentDevice = &p
+		}
+	}
+}
+
+func readSysBlockModel(devName string) *string {
+	devName = strings.TrimSpace(devName)
+	if devName == "" {
+		return nil
+	}
+	data, err := os.ReadFile("/sys/class/block/" + devName + "/device/model")
+	if err != nil {
+		return nil
+	}
+	s := strings.TrimSpace(string(data))
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 // getUnderlyingPhysicalCapacityBytes resolves a block device path to its
@@ -345,4 +575,16 @@ func buildResolvedDevPathToUUIDMap() map[string]string {
 		m[resolved] = uuid
 	}
 	return m
+}
+
+func setMountAlias(id string, alias string) (bool, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return false, fmt.Errorf("id is empty")
+	}
+	alias = strings.TrimSpace(alias)
+	if err := db.SetVolumeAlias(id, alias); err != nil {
+		return false, err
+	}
+	return true, nil
 }

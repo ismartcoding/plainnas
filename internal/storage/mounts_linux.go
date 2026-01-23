@@ -50,12 +50,19 @@ type blockFS struct {
 }
 
 func EnsureMountedUSBVolumes(ctx context.Context) error {
+	if autoMountInhibited() {
+		return nil
+	}
+
 	// Ensure mount root exists.
 	if err := os.MkdirAll(plainnasMountRoot, 0755); err != nil {
 		return err
 	}
 
 	// Load persisted mapping.
+	// IMPORTANT: we treat persisted slots as reservations even when the device
+	// is currently unplugged, so newly plugged devices can't steal historical
+	// /mnt/usbX slots and cause path churn.
 	persisted := db.GetFSUUIDSlotMap()
 
 	// Discover filesystems.
@@ -64,15 +71,23 @@ func EnsureMountedUSBVolumes(ctx context.Context) error {
 		return err
 	}
 
-	// Build mapping from currently mounted /mnt/usbX, and track used slots.
+	// Track occupied slots (currently mounted at /mnt/usbX) and used slots.
+	// usedSlots includes both occupied slots and reserved slots from persisted mapping.
 	mapping := map[string]int{}
+	occupiedSlots := map[int]string{} // slot -> fsUUID
 	usedSlots := map[int]struct{}{}
+	for _, slot := range persisted {
+		if slot > 0 {
+			usedSlots[slot] = struct{}{}
+		}
+	}
 	for _, fs := range filesystems {
 		if fs.FSUUID == "" {
 			continue
 		}
 		if slot, ok := parseUSBSlot(fs.Mountpoint); ok {
 			mapping[fs.FSUUID] = slot
+			occupiedSlots[slot] = fs.FSUUID
 			usedSlots[slot] = struct{}{}
 		}
 	}
@@ -87,13 +102,13 @@ func EnsureMountedUSBVolumes(ctx context.Context) error {
 			continue
 		}
 
-		// Choose slot: prefer persisted if it isn't currently occupied.
+		// Choose slot: prefer persisted if it isn't currently occupied by another filesystem.
 		slot, ok := persisted[fs.FSUUID]
 		if ok {
 			if slot <= 0 {
 				ok = false
 			}
-			if _, occupied := usedSlots[slot]; occupied {
+			if other, occupied := occupiedSlots[slot]; occupied && other != fs.FSUUID {
 				ok = false
 			}
 		}
@@ -102,10 +117,12 @@ func EnsureMountedUSBVolumes(ctx context.Context) error {
 		}
 		usedSlots[slot] = struct{}{}
 		mapping[fs.FSUUID] = slot
+		occupiedSlots[slot] = fs.FSUUID
 
 		target := filepath.Join(plainnasMountRoot, fmt.Sprintf("%s%d", usbPrefix, slot))
 		if err := os.MkdirAll(target, 0755); err != nil {
 			log.Errorf("mount: mkdir %s failed: %v", target, err)
+			db.AddEvent("mount_failed", fmt.Sprintf("mkdir %s: %v", target, err), "")
 			continue
 		}
 		// Avoid stacked mounts: if a previous device was mounted at /mnt/usbX and
@@ -113,17 +130,29 @@ func EnsureMountedUSBVolumes(ctx context.Context) error {
 		// Always clear /mnt/usbX before mounting a new filesystem there.
 		if err := unmountAllAt(target); err != nil {
 			log.Errorf("mount: cleanup %s failed: %v", target, err)
+			db.AddEvent("mount_failed", fmt.Sprintf("cleanup %s: %v", target, err), "")
 			continue
 		}
 		if err := mountByUUID(ctx, fs.FSUUID, target); err != nil {
 			log.Errorf("mount: UUID %s -> %s failed: %v", fs.FSUUID, target, err)
+			db.AddEvent("mount_failed", fmt.Sprintf("UUID %s -> %s: %v", fs.FSUUID, target, err), "")
 			continue
 		}
 		log.Infof("mounted UUID %s at %s", fs.FSUUID, target)
+		db.AddEvent("mount", fmt.Sprintf("mounted UUID %s at %s", fs.FSUUID, target), "")
 	}
 
-	// Persist mapping: includes already-mounted /mnt/usbX and newly mounted ones.
-	return db.StoreFSUUIDSlotMap(mapping)
+	// Persist mapping: merge updates into existing persisted map.
+	// This intentionally keeps entries for currently-unplugged filesystems, to
+	// reserve their /mnt/usbX slot for when they return.
+	merged := map[string]int{}
+	for k, v := range persisted {
+		merged[k] = v
+	}
+	for k, v := range mapping {
+		merged[k] = v
+	}
+	return db.StoreFSUUIDSlotMap(merged)
 }
 
 func scanFilesystems(ctx context.Context) ([]blockFS, error) {

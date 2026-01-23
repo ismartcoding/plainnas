@@ -80,6 +80,7 @@ export interface IFileFilter {
   // relativePath replaces parent for composing final directory with rootPath
   relativePath?: string
   trash?: boolean
+  fileSize?: string
 }
 
 export interface IDropdownItem {
@@ -100,18 +101,39 @@ export interface IVideoItem extends IVideo {
   fileId: string
 }
 
-export interface IStorageVolume {
+// Storage mount entry used across the UI.
+// - For mounted volumes: mountPoint is present and usedBytes/freeBytes are populated.
+// - For disk partitions: path is present; mountPoint/fsType may be missing; totalBytes is the partition size.
+export interface IStorageMount {
   id: string
   name: string
-  alias?: string
-  mountPoint: string
-  fsType: string
+
+  // Partition-only
+  path?: string
+  partitionNum?: number
+  label?: string
+  uuid?: string
+
+  // Common
+  mountPoint?: string
+  fsType?: string
   totalBytes: number
-  usedBytes: number
-  freeBytes: number
+  usedBytes?: number
+  freeBytes?: number
+
+  // Volume-only
+  alias?: string
+  remote?: boolean
+  driveType?: string
+  parentDevice?: string
+}
+
+export interface IStorageDisk {
+  name: string
+  path: string
+  sizeBytes: number
   removable: boolean
-  remote: boolean
-  driveType: string
+  model?: string
 }
 
 // deleted, trashed, restored
@@ -154,7 +176,7 @@ export interface IHomeStats {
   videoCount: number
   audioCount: number
   imageCount: number
-  storageVolumes: IStorageVolume[]
+  mounts: IStorageMount[]
 }
 
 export interface IFavoriteFolder {
@@ -175,8 +197,6 @@ export interface IApp {
   urlToken: string
   httpPort: number
   httpsPort: number
-  deviceName: string
-  appVersion: string
   audios: IPlaylistAudio[]
   audioCurrent: string
   audioMode: string

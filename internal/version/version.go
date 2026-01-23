@@ -1,9 +1,9 @@
-package cmd
+package version
 
 import "fmt"
 
 var (
-	Version   = "0.1.0"
+	Version   = "0.2.0"
 	BuildTime = "dev"
 	GitCommit = "dev"
 )

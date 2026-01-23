@@ -11,10 +11,11 @@
           <span class="picker-current__label">{{ $t('current_path') }}:</span>
           <span class="mono picker-current__value">{{ currentDir || '-' }}</span>
         </div>
-        <DirectoryBrowser :volumes="volumes" :active-root="rootPath" :current-dir="currentDir" :can-go-up="canGoUp"
+        <DirectoryBrowser
+:volumes="volumes" :active-root="rootPath" :current-dir="currentDir" :can-go-up="canGoUp"
           :listing="listing" :dir-items="dirItems" :dir-name="dirName" :volume-title="volumeTitle"
           :volume-used-percent="volumeUsedPercent"
-          :volume-count="(v) => formatUsedTotalBytes(v.usedBytes, v.totalBytes)" :browser-min-height-px="320"
+          :volume-count="(v) => formatUsedTotalBytes(Number(v.usedBytes || 0), Number(v.totalBytes || 0))" :browser-min-height-px="320"
           :list-min-height-px="220" @select-root="selectRoot" @go-up="goUp" @enter-dir="enterDir">
           <template #toolbar-actions>
             <v-icon-button v-tooltip="$t('ok')" @click.stop="chooseCurrent">
@@ -37,13 +38,14 @@ import { computed, ref, watch } from 'vue'
 import toast from '@/components/toaster'
 import { useI18n } from 'vue-i18n'
 import { buildQuery, type IFilterField } from '@/lib/search'
-import { filesGQL, initLazyQuery, initQuery, storageVolumesGQL } from '@/lib/api/query'
-import type { IStorageVolume } from '@/lib/interfaces'
+import { filesGQL, initLazyQuery, initQuery, mountsGQL } from '@/lib/api/query'
+import type { IStorageMount } from '@/lib/interfaces'
 import { getFileName } from '@/lib/api/file'
 import { formatUsedTotalBytes } from '@/lib/format'
 import { getStorageVolumeTitle, sortStorageVolumesByTitle } from '@/lib/volumes'
 import { Modal, popModal } from '@/components/modal'
 import DirectoryBrowser from '@/components/DirectoryBrowser.vue'
+import { shouldHideSystemPath } from '@/lib/system-folders'
 
 const { t } = useI18n()
 
@@ -57,7 +59,7 @@ const emit = defineEmits<{
   (e: typeof Modal.EVENT_PROMPT, path: string): void
 }>()
 
-const volumes = ref<IStorageVolume[]>([])
+const volumes = ref<IStorageMount[]>([])
 const rootPath = ref('')
 const relativePath = ref('')
 const dirItems = ref<string[]>([])
@@ -80,7 +82,7 @@ const canGoUp = computed(() => {
   return !!rootPath.value && (relativePath.value || '').trim() !== ''
 })
 
-function volumeUsedPercent(v: IStorageVolume) {
+function volumeUsedPercent(v: IStorageMount) {
   const total = Number(v.totalBytes || 0)
   const used = Number(v.usedBytes || 0)
   if (!total) return 0
@@ -89,7 +91,7 @@ function volumeUsedPercent(v: IStorageVolume) {
   return Math.max(0, Math.min(100, pct))
 }
 
-function volumeTitle(v: IStorageVolume) {
+function volumeTitle(v: IStorageMount) {
   return getStorageVolumeTitle(v, t)
 }
 
@@ -141,15 +143,16 @@ function cancel() {
   popModal()
 }
 
-initQuery<{ storageVolumes: IStorageVolume[] }>({
-  document: storageVolumesGQL,
+initQuery<{ mounts: IStorageMount[] }>({
+  document: mountsGQL,
   handle: (data, error) => {
     if (error) {
       toast(t(error), 'error')
       return
     }
 
-    volumes.value = sortStorageVolumesByTitle(data?.storageVolumes ?? [], t)
+    const mountedOnly = (data?.mounts ?? []).filter((m) => !String(m?.path ?? '').trim())
+    volumes.value = sortStorageVolumesByTitle(mountedOnly, t)
 
     if (!rootPath.value) {
       rootPath.value = volumes.value[0]?.mountPoint || '/'
@@ -158,7 +161,9 @@ initQuery<{ storageVolumes: IStorageVolume[] }>({
 
     const init = normalizedInitialPath.value
     if (init) {
-      const mounts = volumes.value.map((v) => v.mountPoint).filter(Boolean)
+      const mounts = volumes.value
+        .map((v) => String(v.mountPoint || '').trim())
+        .filter((m): m is string => !!m)
       // Find the longest mount point prefix.
       let best = ''
       for (const m of mounts) {
@@ -197,7 +202,7 @@ const { loading: listing, fetch: fetchDirs } = initLazyQuery<{ files: Array<{ pa
       return
     }
     const files = (data?.files ?? []) as Array<{ path: string; isDir: boolean }>
-    dirItems.value = files.filter((f) => f.isDir).map((f) => f.path)
+    dirItems.value = files.filter((f) => f.isDir && !shouldHideSystemPath(f.path, true)).map((f) => f.path)
   },
 })
 

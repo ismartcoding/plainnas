@@ -113,6 +113,15 @@ const emit = defineEmits(['on-error', 'on-prev', 'on-next', 'on-prev-click', 'on
 
 const { t } = useI18n()
 
+const ORIGIN_IMAGE_MAX_BYTES = 1024 * 1024
+
+function shouldUseOriginImageByDefault(s?: ISource): boolean {
+  if (!s) return false
+  if (!isImage(s.name)) return false
+  if (isSvg(s.name)) return true
+  return typeof s.size === 'number' && s.size > 0 && s.size < ORIGIN_IMAGE_MAX_BYTES
+}
+
 const viewOrigin = () => {
   const c = current.value
   if (c) {
@@ -254,20 +263,20 @@ const {
 
 function updateViewOriginImageState() {
   if (current.value && fileInfo.value && isImage(current.value.name) && current.value.path === fileInfo.value.path) {
-    if (isSvg(current.value.name)) {
+    if (shouldUseOriginImageByDefault(current.value)) {
       current.value.viewOriginImage = true
-    } else {
-      const infoData = fileInfo.value.data
-      if (!infoData) {
-        return
-      }
-      const { width, height } = infoData
-      if (typeof width !== 'number' || typeof height !== 'number') {
-        return
-      }
-      if (width === imgState.naturalWidth && height === imgState.naturalHeight) {
-        current.value.viewOriginImage = true
-      }
+      return
+    }
+
+    const infoData = fileInfo.value.data
+    if (!infoData) return
+
+    const { width, height } = infoData
+    if (typeof width !== 'number' || typeof height !== 'number') return
+
+    // If the server reports the same dimensions as what we loaded, then we're already viewing the origin.
+    if (width === imgState.naturalWidth && height === imgState.naturalHeight) {
+      current.value.viewOriginImage = true
     }
   }
 }
@@ -325,6 +334,12 @@ const changeIndex = async (newIndex: number, actions?: IndexChangeActions) => {
   const s = tempStore.lightbox.sources[newIndex]
   if (!s.src) {
     s.src = getFileUrlByPath(tempStore.urlTokenKey, s.path)
+  }
+
+  // If the original file is already small, skip thumbnail params and load it directly.
+  // Do NOT force this to false for other files; preserve any prior user choice.
+  if (shouldUseOriginImageByDefault(s)) {
+    s.viewOriginImage = true
   }
 
   imgIndex.value = newIndex

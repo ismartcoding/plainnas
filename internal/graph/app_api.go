@@ -2,7 +2,6 @@ package graph
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -15,7 +14,6 @@ import (
 )
 
 func app(_ context.Context) (*model.App, error) {
-	hostname, _ := os.Hostname()
 	urlToken := db.GetURLToken()
 
 	indexed, total, state := media.GetProgress()
@@ -49,8 +47,6 @@ func app(_ context.Context) (*model.App, error) {
 		URLToken:     urlToken,
 		HTTPPort:     config.GetDefault().GetInt("graphql.http_port"),
 		HTTPSPort:    config.GetDefault().GetInt("graphql.https_port"),
-		DeviceName:   hostname,
-		AppVersion:   "",
 		Audios:       playlist,
 		AudioCurrent: audioCurrent,
 		AudioMode:    audioMode,

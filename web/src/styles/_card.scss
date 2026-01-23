@@ -9,6 +9,7 @@
   box-sizing: border-box;
   background: var(--md-sys-color-surface-container);
   color: var(--md-sys-color-on-surface);
+
   &.selected {
     background: var(--md-sys-color-surface-container-highest);
   }
@@ -32,24 +33,51 @@
 
 
 /* Settings card variant (keeps existing global .card while allowing a consistent settings look) */
-.card.settings-card {
+.card.border-card {
   border: 1px solid var(--md-sys-color-outline-variant);
   background: var(--md-sys-color-surface-container-low);
   margin-bottom: 12px;
   padding: 0;
+
+  .card-title {
+    margin: 0;
+    padding: 12px 16px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: none;
+    justify-content: space-between;
+    display: flex;
+
+    .title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  }
+
+  .card-body {
+    padding: 12px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
 }
 
-.card-title.settings-card-title {
-  margin: 0;
-  padding: 12px 16px 0;
-  font-size: 1rem;
-  font-weight: 600;
-  text-transform: none;
-}
-
-.card-body.settings-card-body {
-  padding: 12px 16px 16px;
+.inner-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface);
   display: flex;
   flex-direction: column;
   gap: 12px;
+
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+
+    .actions {
+      margin-left: auto;
+    }
+  }
 }

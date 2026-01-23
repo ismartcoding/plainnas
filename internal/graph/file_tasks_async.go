@@ -37,18 +37,18 @@ type fileTaskOp struct {
 type fileTask struct {
 	mu sync.Mutex
 
-	ID        string
-	ClientID  string
-	Type      fileTaskType
-	Title     string
-	Status    fileTaskStatus
-	Error     string
-	TotalBytes int64
-	DoneBytes  int64
-	TotalItems int64
-	DoneItems  int64
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID          string
+	ClientID    string
+	Type        fileTaskType
+	Title       string
+	Status      fileTaskStatus
+	Error       string
+	TotalBytes  int64
+	DoneBytes   int64
+	TotalItems  int64
+	DoneItems   int64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	lastPersist time.Time
 
 	Ops []fileTaskOp
@@ -78,7 +78,7 @@ func getFileTaskManager() *fileTaskManager {
 }
 
 func (m *fileTaskManager) create(clientID string, typ fileTaskType, title string, ops []fileTaskOp) *fileTask {
-	now := time.Now()
+	now := time.Now().UTC()
 	t := &fileTask{
 		ID:        shortid.New(),
 		ClientID:  clientID,
@@ -135,7 +135,7 @@ func (m *fileTaskManager) publishSnapshot(t *fileTask) {
 		UpdatedAt:  t.UpdatedAt,
 	}
 	forcePersist := t.Status == fileTaskStatusDone || t.Status == fileTaskStatusError
-	now := time.Now()
+	now := time.Now().UTC()
 	shouldPersist := persistThrottle(now, &t.lastPersist, forcePersist)
 	t.mu.Unlock()
 
@@ -159,7 +159,7 @@ func (m *fileTaskManager) run(t *fileTask) {
 	t.mu.Lock()
 	t.Status = fileTaskStatusRunning
 	t.Error = ""
-	t.UpdatedAt = time.Now()
+	t.UpdatedAt = time.Now().UTC()
 	t.mu.Unlock()
 	m.publishSnapshot(t)
 
@@ -179,12 +179,12 @@ func (m *fileTaskManager) run(t *fileTask) {
 	t.mu.Lock()
 	t.TotalBytes = totalBytes
 	t.TotalItems = totalItems
-	t.UpdatedAt = time.Now()
+	t.UpdatedAt = time.Now().UTC()
 	t.mu.Unlock()
 	m.publishSnapshot(t)
 
 	var (
-		lastEmit = time.Now()
+		lastEmit = time.Now().UTC()
 		emitMu   sync.Mutex
 	)
 
@@ -192,7 +192,7 @@ func (m *fileTaskManager) run(t *fileTask) {
 		emitMu.Lock()
 		defer emitMu.Unlock()
 		if force || time.Since(lastEmit) >= 200*time.Millisecond {
-			lastEmit = time.Now()
+			lastEmit = time.Now().UTC()
 			m.publishSnapshot(t)
 		}
 	}
@@ -201,14 +201,14 @@ func (m *fileTaskManager) run(t *fileTask) {
 		AddBytes: func(n int64) {
 			t.mu.Lock()
 			t.DoneBytes += n
-			t.UpdatedAt = time.Now()
+			t.UpdatedAt = time.Now().UTC()
 			t.mu.Unlock()
 			emit(false)
 		},
 		AddItem: func() {
 			t.mu.Lock()
 			t.DoneItems++
-			t.UpdatedAt = time.Now()
+			t.UpdatedAt = time.Now().UTC()
 			t.mu.Unlock()
 			emit(false)
 		},
@@ -233,7 +233,7 @@ func (m *fileTaskManager) run(t *fileTask) {
 
 	t.mu.Lock()
 	t.Status = fileTaskStatusDone
-	t.UpdatedAt = time.Now()
+	t.UpdatedAt = time.Now().UTC()
 	t.mu.Unlock()
 	m.publishSnapshot(t)
 }
@@ -242,7 +242,7 @@ func (m *fileTaskManager) fail(t *fileTask, err error) {
 	t.mu.Lock()
 	t.Status = fileTaskStatusError
 	t.Error = err.Error()
-	t.UpdatedAt = time.Now()
+	t.UpdatedAt = time.Now().UTC()
 	t.mu.Unlock()
 	m.publishSnapshot(t)
 }

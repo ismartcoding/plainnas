@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"syscall"
 
 	"github.com/spf13/cobra"
 )
@@ -23,9 +24,15 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run plainnas service",
 	Run: func(cmd *cobra.Command, args []string) {
+		// Check for root privileges
+		if syscall.Getuid() != 0 {
+			println("This command requires root privileges. Please run with sudo.")
+			os.Exit(1)
+		}
+
 		os.MkdirAll(consts.DATA_DIR, 0755)
 
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		_context = ctx
 		defer stop()
 
@@ -57,5 +64,6 @@ var runCmd = &cobra.Command{
 		go watcher.Run(ctx)
 
 		<-ctx.Done()
+		_ = db.GetDefault().Close()
 	},
 }

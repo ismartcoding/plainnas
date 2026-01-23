@@ -4,11 +4,13 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	plainfs "ismartcoding/plainnas/internal/fs"
 	"ismartcoding/plainnas/internal/graph/model"
+	"ismartcoding/plainnas/internal/pkg/log"
 	"ismartcoding/plainnas/internal/search"
 )
 
@@ -18,6 +20,8 @@ type FilesQuery struct {
 	RootPath     string
 	RelativePath string
 	TrashOnly    bool
+	FileSizeOp   string
+	FileSizeVal  int64
 }
 
 func ParseFilesQuery(q string) FilesQuery {
@@ -35,13 +39,46 @@ func ParseFilesQuery(q string) FilesQuery {
 			out.RelativePath = f.Value
 		case "trash":
 			out.TrashOnly = f.Value == "true"
+		case "file_size":
+			out.FileSizeOp = f.Op
+			out.FileSizeVal = parseFileSize(f.Value)
+			log.Debugf("[ParseFilesQuery] file_size detected - Op: %s, Value: %s, Parsed: %d bytes", f.Op, f.Value, out.FileSizeVal)
 		}
 	}
 	if out.TrashOnly {
 		// Trash view always includes hidden entries.
 		out.ShowHidden = true
 	}
+	log.Debugf("[ParseFilesQuery] FileSizeOp=%s, FileSizeVal=%d", out.FileSizeOp, out.FileSizeVal)
 	return out
+}
+
+// parseFileSize parses size strings like "1MB", "100KB", "1GB" to bytes
+func parseFileSize(s string) int64 {
+	s = strings.TrimSpace(strings.ToUpper(s))
+	if s == "" {
+		return 0
+	}
+
+	multiplier := int64(1)
+	if strings.HasSuffix(s, "GB") {
+		multiplier = 1024 * 1024 * 1024
+		s = strings.TrimSuffix(s, "GB")
+	} else if strings.HasSuffix(s, "MB") {
+		multiplier = 1024 * 1024
+		s = strings.TrimSuffix(s, "MB")
+	} else if strings.HasSuffix(s, "KB") {
+		multiplier = 1024
+		s = strings.TrimSuffix(s, "KB")
+	} else if strings.HasSuffix(s, "B") {
+		s = strings.TrimSuffix(s, "B")
+	}
+
+	val, err := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return val * multiplier
 }
 
 func BuildBaseDir(rootPath, relativePath string) string {
@@ -259,9 +296,16 @@ func ListTrashFiles(offset, limit int, text string, baseFilter string, sortBy mo
 	return matches, nil
 }
 
-func SearchIndexFiles(text string, base string, offset int, limit int, showHidden bool) ([]*model.File, error) {
+func SearchIndexFiles(text string, base string, offset int, limit int, showHidden bool, sizeOp string, sizeBytes int64) ([]*model.File, error) {
 	parent := normalizeSlashDir(base)
-	paths, _ := search.SearchIndex(text, parent, offset, limit)
+
+	// Use SearchIndex with size filter params
+	paths, err := search.SearchIndex(text, parent, offset, limit, sizeOp, uint64(sizeBytes))
+
+	if err != nil {
+		return nil, err
+	}
+
 	if len(paths) > 0 {
 		out := make([]*model.File, 0, len(paths))
 		for _, p := range paths {
@@ -272,9 +316,9 @@ func SearchIndexFiles(text string, base string, offset int, limit int, showHidde
 		return out, nil
 	}
 
-	// If index yields nothing for a specific directory, fall back to filesystem walk.
-	// IMPORTANT: never do this for a global search (parent == "") to avoid full scans.
-	if parent == "" {
+	// If index yields nothing, only fall back to file walk if the user did NOT specify text or file size filter.
+	// If either text or file size filter is set, never do this for a global search (parent == "") to avoid full scans.
+	if strings.TrimSpace(text) != "" || sizeOp != "" {
 		return []*model.File{}, nil
 	}
 

@@ -21,9 +21,36 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
+func webpSaveOptions(quality int) string {
+	q := clamp(quality, 1, 100)
+	// libvips webpsave: effort 0..6 (higher = slower, smaller).
+	// Default to a fast setting to keep interactive thumbnail requests snappy.
+	effort := 0
+	if v := strings.TrimSpace(os.Getenv("PLAINNAS_WEBP_EFFORT")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			effort = n
+		}
+	}
+	effort = clamp(effort, 0, 6)
+	return fmt.Sprintf("[Q=%d,effort=%d,strip]", q, effort)
+}
+
+func vipsCLIConcurrencyArgs() []string {
+	// libvips thread pool size for the invoked process.
+	// Default 1: generally best for latency; can be tuned via env.
+	n := 1
+	if v := strings.TrimSpace(os.Getenv("PLAINNAS_VIPS_CONCURRENCY")); v != "" {
+		if i, err := strconv.Atoi(v); err == nil {
+			n = i
+		}
+	}
+	n = clamp(n, 1, 16)
+	return []string{fmt.Sprintf("--vips-concurrency=%d", n)}
+}
+
 // MaxThumbBytes controls the maximum thumbnail size in bytes.
-// Default 200KB; can be adjusted by callers at runtime.
-var MaxThumbBytes int = 200 * 1024
+// Default 1MB; can be adjusted by callers at runtime.
+var MaxThumbBytes int = 1024 * 1024
 
 // ErrNoCover indicates the requested thumbnail source (audio/video) has no cover image.
 // Callers may translate this to a 404 for "thumbnail not found".
@@ -220,12 +247,17 @@ func generateImageThumbnailWEBPWithVipsCLI(path string, w, h, quality int) (data
 	baseOutPath := filepath.Join(tmpDir, "thumb.webp")
 
 	// Retry with lower quality to satisfy MaxThumbBytes.
+	//
+	// This path is used when we need to enforce a strict byte cap (default 200KB).
+	// A naive step-down loop can end up spawning many `vips` processes for large targets
+	// (e.g. 1024x1024), which can dominate request latency. Instead, adaptively drop
+	// quality based on the previous output size to converge in fewer tries.
 	q := clamp(quality, 1, 100)
-	step := 10
 	minQ := 10
-	for {
+	maxIters := 6
+	for iter := 0; iter < maxIters; iter++ {
 		outPath := baseOutPath
-		outArg := fmt.Sprintf("%s[Q=%d]", outPath, q)
+		outArg := outPath + webpSaveOptions(q)
 
 		var args []string
 		if w > 0 || h > 0 {
@@ -244,7 +276,8 @@ func generateImageThumbnailWEBPWithVipsCLI(path string, w, h, quality int) (data
 			args = []string{"copy", path, outArg}
 		}
 
-		cmd := exec.Command("vips", args...)
+		cmdArgs := append(vipsCLIConcurrencyArgs(), args...)
+		cmd := exec.Command("vips", cmdArgs...)
 		if outBytes, err := cmd.CombinedOutput(); err != nil {
 			_ = outBytes
 			return nil, false
@@ -257,10 +290,18 @@ func generateImageThumbnailWEBPWithVipsCLI(path string, w, h, quality int) (data
 		if fi.Size() <= int64(MaxThumbBytes) || q <= minQ {
 			break
 		}
-		q -= step
-		if q < minQ {
-			q = minQ
+
+		// Heuristic: shrink quality proportional to the overshoot.
+		// For example, if output is 600KB and cap is 1MB, ratio=0.33 so q drops fast.
+		ratio := float64(MaxThumbBytes) / float64(fi.Size())
+		newQ := int(float64(q) * ratio * 0.92) // slight bias downward to avoid oscillation
+		if newQ >= q {
+			newQ = q - 10
 		}
+		if newQ < minQ {
+			newQ = minQ
+		}
+		q = newQ
 	}
 
 	f, err := os.Open(baseOutPath)
@@ -290,34 +331,41 @@ func generateImageThumbnailWEBPWithVipsSem(path string, w, h, quality int) (data
 	if w <= 0 && h <= 0 {
 		return nil, false
 	}
-
-	tmpDir, err := os.MkdirTemp("", "plainnas-vipssem-")
-	if err != nil {
-		return nil, false
-	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
-	outPath := filepath.Join(tmpDir, "thumb.webp")
 	size := w
 	if size <= 0 {
 		size = h
 	}
+	q := clamp(quality, 1, 100)
+	minQ := 10
+	maxIters := 4
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	if err := vipsWorker.ResizeWEBP(ctx, path, outPath, size, clamp(quality, 1, 100)); err != nil {
-		return nil, false
+	for iter := 0; iter < maxIters; iter++ {
+		b, err := vipsWorker.ResizeWEBPBytes(ctx, path, size, q)
+		if err != nil {
+			return nil, false
+		}
+		if len(b) <= MaxThumbBytes || q <= minQ {
+			if len(b) > MaxThumbBytes {
+				return nil, false
+			}
+			return b, true
+		}
+
+		// Adaptively drop quality based on overshoot (same idea as CLI fallback).
+		ratio := float64(MaxThumbBytes) / float64(len(b))
+		newQ := int(float64(q) * ratio * 0.92)
+		if newQ >= q {
+			newQ = q - 10
+		}
+		if newQ < minQ {
+			newQ = minQ
+		}
+		q = newQ
 	}
 
-	b, err := os.ReadFile(outPath)
-	if err != nil {
-		return nil, false
-	}
-	// Enforce MaxThumbBytes cap: if exceeded, fall back to CLI path which can iteratively lower WEBP quality.
-	if len(b) > MaxThumbBytes {
-		return nil, false
-	}
-	return b, true
+	return nil, false
 }
 
 func envTruthy(key string) bool {

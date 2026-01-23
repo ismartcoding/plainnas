@@ -6,20 +6,13 @@
           v-for="v in volumes"
           :key="v.id"
           :title="volumeTitle(v)"
-          :sub="v.mountPoint"
+          :sub="String(v.mountPoint || '')"
           :drive-type="v.driveType"
           :used-percent="volumeUsedPercent(v)"
           :count="volumeCount(v)"
-          :active="v.mountPoint === activeRoot"
-          @click="emit('selectRoot', v.mountPoint)"
-        />
-        <VolumeCard
-          v-if="volumes.length === 0"
-          title="/"
-          sub="/"
-          :show-progress="false"
-          :active="activeRoot === '/'"
-          @click="emit('selectRoot', '/')"
+          :data="v"
+          :active="String(v.mountPoint || '') === activeRoot"
+          @click="emit('selectRoot', v.mountPoint || '/')"
         />
       </div>
     </aside>
@@ -68,13 +61,13 @@
 import { computed, useSlots } from 'vue'
 import { useI18n } from 'vue-i18n'
 import VolumeCard from '@/components/storage/VolumeCard.vue'
-import type { IStorageVolume } from '@/lib/interfaces'
+import type { IStorageMount } from '@/lib/interfaces'
 
 const { t } = useI18n()
 const slots = useSlots()
 
 const props = defineProps<{
-  volumes: IStorageVolume[]
+  volumes: IStorageMount[]
   activeRoot: string
   currentDir: string
   canGoUp: boolean
@@ -82,9 +75,9 @@ const props = defineProps<{
   dirItems: string[]
   dirName: (path: string) => string
   dirDisabled?: (path: string) => boolean
-  volumeTitle: (v: IStorageVolume) => string
-  volumeUsedPercent: (v: IStorageVolume) => number
-  volumeCount: (v: IStorageVolume) => string
+  volumeTitle: (v: IStorageMount) => string
+  volumeUsedPercent: (v: IStorageMount) => number
+  volumeCount: (v: IStorageMount) => string
   browserMinHeightPx?: number
   listMinHeightPx?: number
 }>()

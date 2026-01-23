@@ -1,9 +1,9 @@
 <template>
-  <div class="item task-item" :class="`item-${statusKey}`">
+  <div class="item task-item" :class="`item-${statusStyleKey}`">
     <div class="title">{{ item.title }}</div>
     <div class="subtitle">
-      <span class="status" :class="`status-${statusKey}`">
-        {{ $t(`upload_status.${statusKey}`) }}
+      <span class="status" :class="`status-${statusStyleKey}`">
+        {{ statusLabel }}
       </span>
       <span v-if="item.totalBytes > 0" class="size">{{ formatFileSize(item.totalBytes) }}</span>
 
@@ -36,11 +36,13 @@
 import { computed } from 'vue'
 import { formatFileSize } from '@/lib/format'
 import { useTasksStore, type IFileTask } from '@/stores/tasks'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{ item: IFileTask }>()
 const tasksStore = useTasksStore()
+const { t } = useI18n()
 
-const statusKey = computed(() => {
+const statusStyleKey = computed(() => {
   switch (props.item.status) {
     case 'QUEUED':
       return 'pending'
@@ -52,6 +54,21 @@ const statusKey = computed(() => {
       return 'error'
     default:
       return 'pending'
+  }
+})
+
+const statusLabel = computed(() => {
+  switch (props.item.status) {
+    case 'QUEUED':
+      return t('pending')
+    case 'RUNNING':
+      return t('running')
+    case 'DONE':
+      return t('completed')
+    case 'ERROR':
+      return t('upload_status.error')
+    default:
+      return t('pending')
   }
 })
 
@@ -70,54 +87,5 @@ function remove() {
 </script>
 
 <style scoped lang="scss">
-.subtitle {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 4px;
-  font-size: 0.875rem;
-  color: var(--md-sys-color-on-surface-variant);
-}
-
-.task-actions {
-  margin-left: auto;
-  display: flex;
-  gap: 4px;
-}
-
-.remove-btn {
-  color: var(--md-sys-color-error);
-}
-
-.progress-info {
-  margin-top: 8px;
-}
-
-.progress-text {
-  font-size: 0.75rem;
-  color: var(--md-sys-color-on-surface-variant);
-  margin-bottom: 4px;
-}
-
-.progress-bar {
-  height: 4px;
-  background: var(--md-sys-color-surface-variant);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: var(--md-sys-color-primary);
-  transition: width 0.3s ease;
-}
-
-.error-message {
-  margin-top: 8px;
-  font-size: 0.75rem;
-  color: var(--md-sys-color-error);
-  padding: 8px;
-  background: var(--md-sys-color-error-container);
-  border-radius: 8px;
-}
+@use '@/styles/task-item.scss' as *;
 </style>

@@ -57,15 +57,15 @@ func splitInGroup(input string) []string {
 			continue
 		}
 		if quote != 0 {
+			b.WriteByte(c)
 			if c == quote {
 				quote = 0
-			} else {
-				b.WriteByte(c)
 			}
 			continue
 		}
 		if c == '"' || c == '\'' {
 			quote = c
+			b.WriteByte(c)
 			continue
 		}
 		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
@@ -93,29 +93,38 @@ func removeQuotation(s string) string {
 }
 
 func detectGroupType(group string) string {
+	// Prefer longer operators first (e.g. ">=", "<=", "!=" before "=", ">", "<")
+	ops := []string{"<=", ">=", "!=", "=", ">", "<"}
+	for _, t := range ops {
+		if strings.HasPrefix(group, t) {
+			return t
+		}
+	}
+	// Fallback: check if any operator exists anywhere in the string
 	for _, t := range groupTypes {
 		if strings.Contains(group, t) {
 			return t
 		}
 	}
-	return ""
+	// If no operator found, default to "="
+	return "="
 }
 
 func splitGroup(q string) queryGroup {
-	parts := strings.Split(q, ":")
+	parts := strings.SplitN(q, ":", 2)
 	field := removeQuotation(parts[0])
-	query := removeQuotation(strings.Join(parts[1:], ":"))
+	query := ""
+	if len(parts) > 1 {
+		query = removeQuotation(parts[1])
+	}
 	typ := detectGroupType(query)
 	if typ == "" {
-		// No explicit operator in query. Treat as equality but do not strip any characters.
 		typ = "="
 	}
 	value := ""
 	if typ != "" && strings.HasPrefix(query, typ) {
 		value = query[len(typ):]
 	} else {
-		// If the detected/default operator is not actually a prefix of the query,
-		// keep the query intact as the value.
 		value = query
 	}
 	return queryGroup{length: len(parts), field: field, query: query, op: typ, value: value}

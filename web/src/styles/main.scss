@@ -41,11 +41,10 @@
   .title {
     flex: 1;
     font-weight: 500;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     display: flex;
     align-items: center;
     gap: 8px;
+    padding-block: 16px;
   }
 
   .actions {
@@ -143,44 +142,16 @@
   }
 }
 
-.help-block {
-  padding: 16px;
-}
-
-/* Page helpers (shared across views) */
-.page-desc {
-  color: var(--md-sys-color-on-surface-variant);
-  font-size: 1.2rem;
-  padding-block-end: 10px;
-}
-
 .settings-page {
   padding: 0 16px 16px;
 }
 
-.settings-page--top {
-  padding-top: 16px;
-}
-
 @media (max-width: 720px) {
-  .page-desc {
-    padding-block-end: 8px;
-  }
-
   .settings-page {
     padding: 0 12px 12px;
   }
-
-  .settings-page--top {
-    padding-top: 12px;
-  }
-
-  .settings-page--mobile-top {
-    padding-top: 12px;
-  }
 }
 
-/* Small shared utilities */
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
@@ -215,6 +186,12 @@
   color: var(--md-sys-color-on-secondary-container);
 }
 
+.status-badge.bad {
+  border-color: var(--md-sys-color-error-container);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
 .inline-edit {
   cursor: pointer;
 }
@@ -227,6 +204,7 @@
     max-height: 50vh;
     margin: 0;
     text-align: start;
+    font-weight: normal;
   }
 }
 
@@ -280,22 +258,17 @@
 
     .sidebar-body {
       padding-inline-start: 8px;
+      padding-block-end: 40px;
 
       .section-title {
         display: flex;
-        align-items: center;
         font-size: 0.75rem;
         color: var(--md-sys-color-on-surface-variant);
-        margin: 8px 16px;
-
-        .actions {
-          margin-inline-start: auto;
-          display: flex;
-          flex-direction: row;
-          gap: 8px;
-          justify-content: space-between;
-          align-items: center;
-        }
+        margin: 8px 12px 8px 8px;
+        gap: 8px;
+        height: 40px;
+        justify-content: space-between;
+        align-items: center;
       }
     }
 
@@ -576,16 +549,11 @@
   .key {
     font-weight: bold;
     margin-inline-end: 8px;
-    width: 120px;
+    width: min(240px, 30%);
   }
 
   .value {
     flex: 1;
     word-break: break-all;
   }
-}
-
-
-.modal-source-dirs {
-  min-width: 50vw !important;
 }

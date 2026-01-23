@@ -1,20 +1,23 @@
 <template>
   <div class="top-app-bar">
-    <v-checkbox touch-target="wrapper" :checked="allChecked" :indeterminate="!allChecked && checked"
+    <v-checkbox
+touch-target="wrapper" :checked="allChecked" :indeterminate="!allChecked && checked"
       @change="toggleAllChecked" />
     <div class="title">
       <span v-if="selectedIds.length">{{ $t('x_selected', {
         count: realAllChecked ? total.toLocaleString() :
           selectedIds.length.toLocaleString()
       }) }}</span>
-      <span v-else>{{ $t('page_title.images') }} ({{ total.toLocaleString() }})</span>
+      <span v-else>{{ $t('images') }} ({{ total.toLocaleString() }})</span>
       <template v-if="checked">
         <template v-if="filter.trash">
-          <v-icon-button v-tooltip="$t('delete')"
+          <v-icon-button
+v-tooltip="$t('delete')"
             @click.stop="deleteItems(dataType, selectedIds, realAllChecked, total, q)">
             <i-material-symbols:delete-forever-outline-rounded />
           </v-icon-button>
-          <v-icon-button v-tooltip="$t('restore')" :loading="restoreLoading(getQuery())"
+          <v-icon-button
+v-tooltip="$t('restore')" :loading="restoreLoading(getQuery())"
             @click.stop="restore(dataType, getQuery())">
             <i-material-symbols:restore-from-trash-outline-rounded />
           </v-icon-button>
@@ -23,7 +26,8 @@
           </v-icon-button>
         </template>
         <template v-else>
-          <v-icon-button v-tooltip="$t('move_to_trash')" :loading="trashLoading(getQuery())"
+          <v-icon-button
+v-tooltip="$t('move_to_trash')" :loading="trashLoading(getQuery())"
             @click.stop="trash(dataType, getQuery())">
             <i-material-symbols:delete-outline-rounded />
           </v-icon-button>
@@ -57,37 +61,45 @@
             <i-material-symbols:sort-rounded />
           </v-icon-button>
         </template>
-        <div v-for="item in sortItems" :key="item.value" class="dropdown-item"
+        <div
+v-for="item in sortItems" :key="item.value" class="dropdown-item"
           :class="{ 'selected': item.value === imageSortBy }" @click="sort(item.value); sortMenuVisible = false">
           {{ $t(item.label) }}
         </div>
       </v-dropdown>
-      <ViewToggleButtons v-if="!isPhone" :card-view="mainStore.imagesCardView"
+      <ViewToggleButtons
+v-if="!isPhone" :card-view="mainStore.imagesCardView"
         @update:card-view="(value: boolean) => mainStore.imagesCardView = value" />
     </div>
   </div>
   <div v-if="isPhone && !checked" class="secondary-actions">
-    <ViewToggleButtons :card-view="mainStore.imagesCardView"
+    <ViewToggleButtons
+:card-view="mainStore.imagesCardView"
       @update:card-view="(value: boolean) => mainStore.imagesCardView = value" />
   </div>
 
-  <all-checked-alert :limit="limit" :total="total" :all-checked-alert-visible="allCheckedAlertVisible"
+  <all-checked-alert
+:limit="limit" :total="total" :all-checked-alert-visible="allCheckedAlertVisible"
     :real-all-checked="realAllChecked" :select-real-all="selectRealAll" :clear-selection="clearSelection" />
   <div class="scroll-content" @dragover.stop.prevent="fileDragEnter">
     <div v-show="dropping" class="drag-mask" @drop.stop.prevent="dropFiles2" @dragleave.stop.prevent="fileDragLeave">{{
       $t('release_to_send_files') }}</div>
     <div v-if="!mainStore.imagesCardView" class="media-grid" :class="{ 'select-mode': checked }">
-      <section v-for="(item, i) in items" :key="item.id" class="media-item"
+      <section
+v-for="(item, i) in items" :key="item.id" class="media-item"
         :class="{ selected: selectedIds.includes(item.id), selecting: shiftEffectingIds.includes(item.id) }"
         @click.stop="handleItemClick($event, item, i, view)" @mouseenter.stop="handleMouseOver($event, i)">
-        <img class="image-thumb image" :src="getFileUrl(item.fileId, '&w=200&h=200')"
+        <img
+class="image-thumb image" :src="getFileUrl(item.fileId, '&w=200&h=200')"
           onerror="this.src='/broken-image.png'" />
-        <v-icon-button v-if="shiftEffectingIds.includes(item.id)" class="btn-checkbox"
+        <v-icon-button
+v-if="shiftEffectingIds.includes(item.id)" class="btn-checkbox"
           @click.stop="toggleSelect($event, item, i)">
           <i-material-symbols:check-circle-rounded v-if="shouldSelect" />
           <i-material-symbols:check-circle-outline-rounded v-else />
         </v-icon-button>
-        <v-icon-button v-else-if="selectedIds.includes(item.id)" class="btn-checkbox"
+        <v-icon-button
+v-else-if="selectedIds.includes(item.id)" class="btn-checkbox"
           @click.stop="toggleSelect($event, item, i)">
           <i-material-symbols:check-circle-rounded />
         </v-icon-button>
@@ -110,7 +122,8 @@
       </template>
     </div>
     <div v-else class="main-list media-list" :class="{ 'select-mode': checked }">
-      <ImageListItem v-for="(item, i) in items" :key="item.id" :item="item" :index="i" :is-phone="isPhone"
+      <ImageListItem
+v-for="(item, i) in items" :key="item.id" :item="item" :index="i" :is-phone="isPhone"
         :selected-ids="selectedIds" :shift-effecting-ids="shiftEffectingIds" :should-select="shouldSelect"
         :buckets-map="bucketsMap" :filter="filter" :data-type="dataType" :main-store="mainStore" :app="app"
         :handle-item-click="handleItemClick" :handle-mouse-over="handleMouseOver" :toggle-select="toggleSelect"
@@ -124,7 +137,8 @@
     </div>
     <v-pagination v-if="total > limit" :page="page" :go="gotoPage" :total="total" :limit="limit" />
     <input ref="fileInput" style="display: none" type="file" accept="image/*" multiple @change="uploadChanged" />
-    <input ref="dirFileInput" style="display: none" type="file" accept="image/*" multiple webkitdirectory mozdirectory
+    <input
+ref="dirFileInput" style="display: none" type="file" accept="image/*" multiple webkitdirectory mozdirectory
       directory @change="dirUploadChanged" />
   </div>
 </template>
@@ -163,7 +177,7 @@ import { useKeyEvents } from '@/hooks/key-events'
 import { generateDownloadFileName } from '@/lib/format'
 import { useMediaRestore, useMediaTrash } from '@/hooks/media-trash'
 import ImageListItem from '@/components/images/ImageListItem.vue'
-import { pickUploadDir } from '@/lib/upload/pick-upload-dir'
+import { createBucketUploadTarget } from '@/hooks/media-upload'
 
 const isPhone = inject('isPhone') as boolean
 const mainStore = useMainStore()
@@ -316,42 +330,35 @@ function getUrl(q: string) {
   return q ? `/images?q=${q}` : `/images`
 }
 
-function getUploadDir() {
-  const bucket = buckets.value.find((it) => it.id === filter.bucketId)
-  if (bucket) {
-    return getDirFromPath(bucket.topItems[0])
-  }
-
-  return `/DATA/Images`
-}
-
-async function uploadFilesClick() {
-  const dir = await pickUploadDir({
+const uploadTarget = createBucketUploadTarget({
+  filter,
+  buckets,
+  picker: {
     title: t('upload_select_destination'),
     description: t('upload_select_destination_desc'),
-    initialPath: getUploadDir(),
+    initialPath: '',
     modalId: 'upload-directory-picker-images',
     storageKey: 'plainnas.uploadDir.images',
-  })
+  },
+})
+
+async function uploadFilesClick() {
+  const dir = await uploadTarget.resolveTargetDir()
   if (!dir) return
   uploadFiles(dir)
 }
 
 async function uploadDirClick() {
-  const dir = await pickUploadDir({
-    title: t('upload_select_destination'),
-    description: t('upload_select_destination_desc'),
-    initialPath: getUploadDir(),
-    modalId: 'upload-directory-picker-images',
-    storageKey: 'plainnas.uploadDir.images',
-  })
+  const dir = await uploadTarget.resolveTargetDir()
   if (!dir) return
   uploadDir(dir)
 }
 
 function dropFiles2(e: DragEvent) {
-  dropFiles(e, getUploadDir(), (file) => isImage(file.name))
+  dropFiles(e, uploadTarget.resolveTargetDir, (file) => isImage(file.name))
 }
+
+const onPasteUpload = uploadTarget.createPasteUploadHandler(uploads, 'image/')
 
 const itemsTagsUpdatedHandler = (event: IItemsTagsUpdatedEvent) => {
   if (event.type === dataType) {
@@ -404,6 +411,7 @@ onActivated(() => {
   emitter.on('upload_task_done', uploadTaskDoneHandler)
   window.addEventListener('keydown', pageKeyDown)
   window.addEventListener('keyup', pageKeyUp)
+  window.addEventListener('paste', onPasteUpload)
 })
 
 onDeactivated(() => {
@@ -413,5 +421,6 @@ onDeactivated(() => {
   emitter.off('upload_task_done', uploadTaskDoneHandler)
   window.removeEventListener('keydown', pageKeyDown)
   window.removeEventListener('keyup', pageKeyUp)
+  window.removeEventListener('paste', onPasteUpload)
 })
 </script>

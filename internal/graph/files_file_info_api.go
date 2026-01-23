@@ -1,7 +1,9 @@
 package graph
 
 import (
+	"context"
 	"image"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -11,7 +13,45 @@ import (
 	"ismartcoding/plainnas/internal/media"
 )
 
-func buildFileInfo(id string, path string) (*model.FileInfo, error) {
+func computeDirSize(ctx context.Context, path string) (int64, error) {
+	var total int64
+	err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			// Skip unreadable entries.
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// Avoid following symlinks (and potential loops).
+		if d.Type()&os.ModeSymlink != 0 {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.IsDir() {
+			return nil
+		}
+		info, statErr := d.Info()
+		if statErr != nil {
+			return nil
+		}
+		if info.Mode().IsRegular() {
+			total += info.Size()
+		}
+		return nil
+	})
+	if err != nil {
+		return total, err
+	}
+	return total, nil
+}
+
+func buildFileInfo(ctx context.Context, id string, path string, includeDirSize bool) (*model.FileInfo, error) {
 	if id == path {
 		if uuid, _ := media.FindByPath(filepath.ToSlash(path)); uuid != "" {
 			id = uuid
@@ -25,7 +65,16 @@ func buildFileInfo(id string, path string) (*model.FileInfo, error) {
 	)
 	if st, err := os.Stat(path); err == nil {
 		updatedAt = st.ModTime()
-		size = st.Size()
+		if includeDirSize && st.IsDir() {
+			if dirSize, derr := computeDirSize(ctx, path); derr == nil {
+				size = dirSize
+			} else {
+				// Fallback: directory entry size.
+				size = st.Size()
+			}
+		} else {
+			size = st.Size()
+		}
 	} else if mf != nil {
 		updatedAt = time.Unix(mf.ModifiedAt, 0)
 		size = mf.Size

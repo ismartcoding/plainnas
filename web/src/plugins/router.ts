@@ -53,7 +53,7 @@ const router = createRouter({
         {
           path: 'settings/device-info',
           components: {
-            default: () => import('@/views/DeviceInfoView.vue'),
+            default: () => import('@/views/settings/SettingsAboutView.vue'),
             LeftSidebar: () => import('@/views/settings/SettingsSidebar.vue'),
           },
           meta: { group: 'settings' },
@@ -62,6 +62,22 @@ const router = createRouter({
           path: 'settings/lan-share',
           components: {
             default: () => import('@/views/settings/SettingsLanShareView.vue'),
+            LeftSidebar: () => import('@/views/settings/SettingsSidebar.vue'),
+          },
+          meta: { group: 'settings' },
+        },
+        {
+          path: 'settings/sessions',
+          components: {
+            default: () => import('@/views/settings/SettingsSessionsView.vue'),
+            LeftSidebar: () => import('@/views/settings/SettingsSidebar.vue'),
+          },
+          meta: { group: 'settings' },
+        },
+        {
+          path: 'settings/events',
+          components: {
+            default: () => import('@/views/settings/SettingsEventsView.vue'),
             LeftSidebar: () => import('@/views/settings/SettingsSidebar.vue'),
           },
           meta: { group: 'settings' },
@@ -120,6 +136,12 @@ const router = createRouter({
       name: 'login',
       path: '/login',
       component: () => import('@/views/LoginView.vue'),
+      meta: { requiresAuth: false },
+    },
+    {
+      name: 'setup-password',
+      path: '/setup-password',
+      component: () => import('@/views/SetupPasswordView.vue'),
       meta: { requiresAuth: false },
     },
     {

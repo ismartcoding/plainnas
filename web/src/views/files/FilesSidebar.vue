@@ -2,7 +2,8 @@
   <left-sidebar class="files-sidebar">
     <template #body>
       <ul class="nav">
-        <li v-for="item in quickLinks" :key="item.fullPath" :class="{ active: item.isChecked }"
+        <li
+v-for="item in quickLinks" :key="item.fullPath" :class="{ active: item.isChecked }"
           @click.prevent="openLink(item)">
           <span class="icon" aria-hidden="true">
             <i-lucide:history v-if="item.type === 'RECENTS'" />
@@ -13,19 +14,26 @@
             <i-material-symbols:help-outline-rounded />
           </v-icon-button>
           <span v-if="item.type === 'RECENTS' && recentCount >= 0" class="count">{{ recentCount.toLocaleString()
-            }}</span>
+          }}</span>
           <span v-else-if="item.type === 'TRASH' && trashCount >= 0" class="count">{{ trashCount.toLocaleString()
-            }}</span>
+          }}</span>
         </li>
       </ul>
 
-      <div class="section-title">{{ $t('volumes') }}</div>
+      <div class="section-title">
+        {{ $t('volumes') }}
+        <v-icon-button v-tooltip="$t('disk_manager')" class="sm" @click.stop="openDiskManager">
+          <i-material-symbols:settings-outline-rounded />
+        </v-icon-button>
+      </div>
       <div class="volumes">
-        <VolumeCard v-for="item in volumeLinks" :key="item.fullPath" :title="item.title" :drive-type="item.driveType"
-          :used-percent="item.usedPercent || 0" :count="item.count || ''"
+        <VolumeCard
+v-for="item in volumeLinks" :key="item.fullPath" :title="item.title" :drive-type="item.driveType"
+          :used-percent="item.usedPercent || 0" :count="item.count || ''" :data="item"
           :percent-class="percentClass(item.usedPercent)" :active="item.isChecked" @click="openLink(item)">
           <template #actions>
-            <v-icon-button :id="'volume-' + item.id" v-tooltip="$t('actions')" class="sm"
+            <v-icon-button
+:id="'volume-' + item.id" v-tooltip="$t('actions')" class="sm"
               @click.prevent.stop="showVolumeMenu(item)">
               <i-material-symbols:more-vert />
             </v-icon-button>
@@ -36,10 +44,12 @@
       <template v-if="favoriteLinks.length">
         <div class="section-title">{{ $t('favorites') }}</div>
         <ul class="nav">
-          <li v-for="item in favoriteLinks" :key="item.fullPath" :class="{ active: item.isChecked }"
+          <li
+v-for="item in favoriteLinks" :key="item.fullPath" :class="{ active: item.isChecked }"
             @click.prevent="openLink(item)">
             <span class="title">{{ item.title }}</span>
-            <v-icon-button :id="'favorite-' + item.fullPath" v-tooltip="$t('actions')" class="sm"
+            <v-icon-button
+:id="'favorite-' + item.fullPath" v-tooltip="$t('actions')" class="sm"
               @click.prevent.stop="showFavoriteMenu(item)">
               <i-material-symbols:more-vert />
             </v-icon-button>
@@ -64,14 +74,13 @@
 <script setup lang="ts">
 import router, { replacePath } from '@/plugins/router'
 import { useMainStore } from '@/stores/main'
-import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { buildQuery } from '@/lib/search'
 import type { IFileFilter, IFavoriteFolder } from '@/lib/interfaces'
 import { useSearch } from '@/hooks/files'
 import { decodeBase64, encodeBase64 } from '@/lib/strutil'
 import { useI18n } from 'vue-i18n'
-import { initMutation, removeFavoriteFolderGQL, setFavoriteFolderAliasGQL, setStorageVolumeAliasGQL } from '@/lib/api/mutation'
+import { initMutation, removeFavoriteFolderGQL, setFavoriteFolderAliasGQL, setMountAliasGQL } from '@/lib/api/mutation'
 import { favoriteFoldersGQL, filesSidebarCountsGQL, initLazyQuery, initQuery } from '@/lib/api/query'
 import toast from '@/components/toaster'
 import emitter from '@/plugins/eventbus'
@@ -81,6 +90,7 @@ import { formatUsedTotalBytes } from '@/lib/format'
 import { openModal } from '@/components/modal'
 import EditValueModal from '@/components/EditValueModal.vue'
 import VolumeCard from '@/components/storage/VolumeCard.vue'
+import DiskManagerModal from '@/components/storage/DiskManagerModal.vue'
 import { getStorageVolumeTitle } from '@/lib/volumes'
 
 const mainStore = useMainStore()
@@ -127,6 +137,10 @@ const selectedFavorite = ref<LinkItem | null>(null)
 const volumeMenuVisible = ref(false)
 const selectedVolume = ref<LinkItem | null>(null)
 const aliasInput = ref('')
+
+function openDiskManager() {
+  openModal(DiskManagerModal)
+}
 
 function openRecent() {
   replacePath(mainStore, '/files/recent')
@@ -236,23 +250,25 @@ const links = computed(() => {
   })
 
   volumes.value.forEach((v) => {
+    const mp = String(v.mountPoint || '').trim()
+    if (!mp) return
     const title = getStorageVolumeTitle(v, t)
     const totalBytes = v.totalBytes ?? 0
     const usedBytes = v.usedBytes ?? 0
     const count = totalBytes > 0 ? formatUsedTotalBytes(usedBytes, totalBytes) : ''
     links.push({
       id: v.id,
-      rootPath: v.mountPoint,
+      rootPath: mp,
       relativePath: '',
-      fullPath: v.mountPoint,
+      fullPath: mp,
       type: 'VOLUME',
       title,
       driveType: v.driveType,
       usedPercent: totalBytes > 0 ? (usedBytes / totalBytes) * 100 : 0,
-      remote: v.remote,
+      remote: !!v.remote,
       count,
       // Highlight volume only if no favorite folder matches the current location
-      isChecked: !recent.value && !bestFavoriteMatchFullPath && v.mountPoint === parent.value,
+      isChecked: !recent.value && !bestFavoriteMatchFullPath && mp === parent.value,
       isFavoriteFolder: false,
     })
   })
@@ -408,7 +424,7 @@ function openSetAlias() {
   if (!item || !item.id) return
   const mutationFactory = () =>
     initMutation({
-      document: setStorageVolumeAliasGQL,
+      document: setMountAliasGQL,
       options: {
         update: () => {
           refetchVolumes()

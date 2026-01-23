@@ -29,8 +29,6 @@ export const appFragment = gql`
     urlToken
     httpPort
     httpsPort
-    deviceName
-    appVersion
     audios {
       ...PlaylistAudioFragment
     }
@@ -131,5 +129,7 @@ export const deviceInfoFragment = gql`
     swapUsedBytes
     ips
     nics { name mac speedRate }
+    appFullVersion
+    model
   }
 `

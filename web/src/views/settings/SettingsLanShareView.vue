@@ -1,48 +1,40 @@
 <template>
-  <div class="scroll-content settings-page settings-page--top">
-    <p class="page-desc">{{ t('lan_share_desc') }}</p>
-
-    <section class="card settings-card">
-      <h5 class="card-title settings-card-title">{{ t('status') }}</h5>
-      <div class="card-body settings-card-body">
-        <div class="settings-kv">
-          <div class="settings-kv__label">{{ t('enabled') }}</div>
-          <div class="settings-kv__value">
-            <v-filled-button :value="enabled ? 'stop' : 'start'" :loading="toggling" @click="toggleEnabled">
+  <div class="top-app-bar">
+    <div class="title">{{ t('lan_share_desc') }}</div>
+  </div>
+  <div class="scroll-content settings-page">
+    <section v-if="shares.length > 0 || enabled" class="card border-card">
+      <h5 class="card-title">{{ t('status') }}
+           <v-filled-button :value="enabled ? 'stop' : 'start'" :loading="toggling" @click="toggleEnabled">
               {{ enabled ? t('stop') : t('start') }}
             </v-filled-button>
-          </div>
-        </div>
-
-        <div class="settings-kv">
-          <div class="settings-kv__label">{{ t('samba_service') }}</div>
-          <div class="settings-kv__value status-service">
-            <span class="mono">{{ settings?.serviceName || '-' }}</span>
-            <span class="status-badge" :class="{ on: settings?.serviceActive }">{{ t('samba_service_active') }}: {{
-              settings?.serviceActive ? t('yes') : t('no') }}</span>
-            <span class="status-badge" :class="{ on: settings?.serviceEnabled }">{{ t('samba_service_enabled') }}: {{
-              settings?.serviceEnabled ? t('yes') : t('no') }}</span>
-          </div>
-        </div>
-
-        <div class="settings-kv">
-          <div class="settings-kv__label">{{ t('ip_addresses') }}</div>
-          <div class="settings-kv__value mono">{{ preferredAddressRaw || '-' }}</div>
+      </h5>
+      <div class="card-body">
+        <div class="status-service">
+          <span class="status-badge" :class="{ on: settings?.serviceActive }">{{ t('samba_service_active') }}: {{
+            settings?.serviceActive ? t('yes') : t('no') }}</span>
+          <span class="status-badge" :class="{ on: settings?.serviceEnabled }">{{ t('samba_service_enabled') }}: {{
+            settings?.serviceEnabled ? t('yes') : t('no') }}</span>
         </div>
 
         <div v-if="enabled && preferredHost && shares.length" class="hint">
-          <div class="share-path-tabs">
+          <div class="share-path-tabs" style="justify-content: space-between;">
             <v-chip-set>
-              <v-filter-chip label="Windows" :selected="sharePathMode === 'windows'"
+              <v-filter-chip
+label="Windows" :selected="sharePathMode === 'windows'"
                 @click="sharePathMode = 'windows'" />
-              <v-filter-chip label="macOS / Linux" :selected="sharePathMode === 'macos/linux'"
+              <v-filter-chip
+label="macOS / Linux" :selected="sharePathMode === 'macos/linux'"
                 @click="sharePathMode = 'macos/linux'" />
             </v-chip-set>
+            <v-icon-button @click.stop="shareHostMode = shareHostMode === 'ip' ? 'discovery' : 'ip'">
+              <i-material-symbols:switch-left-rounded v-if="shareHostMode === 'ip'" />
+              <i-material-symbols:switch-right-rounded v-else />
+            </v-icon-button>
           </div>
-
           <div v-for="s in shares" :key="s.name" class="share-path">
-            <div class="mono share-path__text">{{ formatShareAddress(s.name) }}</div>
-            <v-icon-button v-tooltip="t('copy')" @click.prevent.stop="copyShareAddress(s.name)">
+            <div class="mono share-path__text">{{ formatShareAddress(s.name, shareHostMode) }}</div>
+            <v-icon-button v-tooltip="t('copy')" @click.prevent.stop="copyShareAddress(s.name, shareHostMode)">
               <i-material-symbols:content-copy-outline-rounded />
             </v-icon-button>
           </div>
@@ -50,26 +42,32 @@
       </div>
     </section>
 
-    <section class="card settings-card">
-      <h5 class="card-title settings-card-title">{{ t('samba_shares') }}</h5>
-      <div class="card-body settings-card-body">
+    <section class="card border-card">
+      <h5 class="card-title">{{ t('samba_shares') }}
         <div class="share-actions">
           <v-outlined-button value="add" @click="addShare">{{ t('add') }}</v-outlined-button>
           <v-filled-button value="save" :loading="saving" @click="save">{{ t('save') }}</v-filled-button>
         </div>
+      </h5>
+      <div class="card-body">
+  
 
         <div v-if="shares.length === 0" class="empty">{{ t('no_data') }}</div>
 
-        <div v-for="(s, idx) in shares" :key="idx" class="share">
-          <div class="share-head">
-            <v-outlined-button value="remove" @click="removeShare(idx)">{{ t('remove') }}</v-outlined-button>
+        <div v-for="(s, idx) in shares" :key="idx" class="inner-card">
+          <div class="card-head">
+            <div class="actions">
+              <v-outlined-button value="remove" @click="removeShare(idx)">{{ t('remove') }}</v-outlined-button>
+            </div>
           </div>
 
-          <v-text-field v-model="s.name" class="form-control" :label="t('samba_share_name')" autocomplete="off"
+          <v-text-field
+v-model="s.name" class="form-control" :label="t('samba_share_name')" autocomplete="off"
             :error="(submitAttempted || dirty) && !!shareErrors[idx]?.name"
             :error-text="(submitAttempted || dirty) && shareErrors[idx]?.name ? t(shareErrors[idx]?.name) : ''" />
 
-          <v-text-field v-model="s.sharePath" class="form-control" :label="t('samba_share_path')"
+          <v-text-field
+v-model="s.sharePath" class="form-control" :label="t('samba_share_path')"
             placeholder="/mnt/storage/share" autocomplete="off"
             :error="(submitAttempted || dirty) && !!shareErrors[idx]?.sharePath"
             :error-text="(submitAttempted || dirty) && shareErrors[idx]?.sharePath ? t(shareErrors[idx]?.sharePath) : ''">
@@ -83,13 +81,17 @@
           <div class="chip-row">
             <div class="chip-label">{{ t('samba_access') }}</div>
             <v-chip-set>
-              <v-filter-chip :label="t('samba_access_anyone_write')" :selected="s.auth === 'GUEST' && !s.readOnly"
+              <v-filter-chip
+:label="t('samba_access_anyone_write')" :selected="s.auth === 'GUEST' && !s.readOnly"
                 @click="setShareMode(idx, 'GUEST', false)" />
-              <v-filter-chip :label="t('samba_access_anyone_read')" :selected="s.auth === 'GUEST' && s.readOnly"
+              <v-filter-chip
+:label="t('samba_access_anyone_read')" :selected="s.auth === 'GUEST' && s.readOnly"
                 @click="setShareMode(idx, 'GUEST', true)" />
-              <v-filter-chip :label="t('samba_access_password_write')" :selected="s.auth === 'PASSWORD' && !s.readOnly"
+              <v-filter-chip
+:label="t('samba_access_password_write')" :selected="s.auth === 'PASSWORD' && !s.readOnly"
                 @click="setShareMode(idx, 'PASSWORD', false)" />
-              <v-filter-chip :label="t('samba_access_password_read')" :selected="s.auth === 'PASSWORD' && s.readOnly"
+              <v-filter-chip
+:label="t('samba_access_password_read')" :selected="s.auth === 'PASSWORD' && s.readOnly"
                 @click="setShareMode(idx, 'PASSWORD', true)" />
             </v-chip-set>
           </div>
@@ -97,20 +99,19 @@
       </div>
     </section>
 
-    <section class="card settings-card">
-      <h5 class="card-title settings-card-title">{{ t('samba_user_password') }}</h5>
-      <div class="card-body settings-card-body">
+    <section class="card border-card">
+      <h5 class="card-title">{{ t('samba_user_password') }}
+                 <v-filled-button value="set-password" :loading="passwordSaving" @click="setPassword">{{ t('save')
+            }}</v-filled-button>
+      </h5>
+      <div class="card-body">
         <p class="subtle">{{ t('samba_username') }}: <span class="mono">nas</span></p>
 
-        <v-text-field v-model="newPassword" class="form-control" :label="t('samba_password')" type="password"
+        <v-text-field
+v-model="newPassword" class="form-control" :label="t('samba_password')" type="password"
           autocomplete="new-password" :error="(passwordSubmitAttempted || passwordDirty) && !!newPasswordError"
           :error-text="(passwordSubmitAttempted || passwordDirty) && newPasswordError ? t(newPasswordError) : ''"
           @keyup.enter="setPassword" />
-
-        <div class="share-actions">
-          <v-filled-button value="set-password" :loading="passwordSaving" @click="setPassword">{{ t('save')
-            }}</v-filled-button>
-        </div>
       </div>
     </section>
   </div>
@@ -173,22 +174,32 @@ const preferredAddressRaw = computed(() => {
 })
 
 const preferredHost = computed(() => stripCIDR(preferredAddressRaw.value))
+const discoveryName = computed(() => {
+  const h = (hostname.value || '').trim()
+  if (!h) return ''
+  return `${h}.local`
+})
 
-function formatShareAddress(name: string) {
-  const host = String(preferredHost.value || '').trim()
+const shareHostMode = ref<'ip' | 'discovery'>('discovery')
+
+function formatShareAddress(name: string, hostMode: 'ip' | 'discovery' = shareHostMode.value) {
+  let host = ''
+  if (hostMode === 'discovery') {
+    host = String(discoveryName.value || '').trim()
+  } else {
+    host = String(preferredHost.value || '').trim()
+  }
   const share = String(name || '').trim()
   if (!host || !share) return ''
-
   if (sharePathMode.value === 'windows') {
-    return `\\\\${host}\\${share}`
+    return `\\${host}\\${share}`
   }
-
   // macOS and most Linux file managers accept smb://
   return `smb://${host}/${share}`
 }
 
-async function copyShareAddress(name: string) {
-  const text = formatShareAddress(name)
+async function copyShareAddress(name: string, hostMode: 'ip' | 'discovery' = shareHostMode.value) {
+  const text = formatShareAddress(name, hostMode)
   if (!text) return
   await copyToClipboard(text)
 }
@@ -367,7 +378,8 @@ async function setPassword() {
 
 <style scoped>
 .status-service {
-  flex-wrap: wrap;
+  display: flex;
+  gap: 8px;
 }
 
 
@@ -377,20 +389,6 @@ async function setPassword() {
   gap: 8px;
 }
 
-.share {
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  background: var(--md-sys-color-surface);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.share-head {
-  display: flex;
-  justify-content: end;
-}
 
 .chip-row {
   display: flex;

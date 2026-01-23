@@ -1,11 +1,9 @@
 <template>
   <div class="section-title">
     {{ $t('tags') }}
-    <div class="actions">
-      <v-icon-button v-tooltip="$t('add_tag')" @click.prevent="add">
-        <i-material-symbols:add-rounded />
-      </v-icon-button>
-    </div>
+    <v-icon-button v-tooltip="$t('add_tag')" @click.prevent="add">
+      <i-material-symbols:add-rounded />
+    </v-icon-button>
   </div>
   <ul class="nav">
     <li v-for="item in tags" :key="item.id" :class="{ active: item.id === selected }" @click.prevent="view(item)">

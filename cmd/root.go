@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"ismartcoding/plainnas/internal/version"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -8,7 +9,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:     "plainnas",
-	Version: FullVersion(),
+	Version: version.FullVersion(),
 	Short:   "Build your lightweight NAS.",
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
@@ -21,6 +22,8 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	rootCmd.AddCommand(installCmd)
 	rootCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(resetPwdCmd)
+	rootCmd.AddCommand(updateCmd)
 	rootCmd.Flags().BoolP("version", "v", false, "version")
 
 	rootCmd.Execute()

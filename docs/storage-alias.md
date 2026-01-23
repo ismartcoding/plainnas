@@ -3,13 +3,16 @@
 PlainNAS supports user-defined aliases for storage volumes exposed via GraphQL.
 
 Notes:
-- `StorageVolume.id` is a stable identifier. Local disks use the filesystem UUID (`<uuid>`); remote mounts use `remote:<src>`.
+- `StorageMount.id` is a stable identifier.
+  - Local mounted volumes prefer the filesystem UUID: `fsuuid:<uuid>`.
+  - Local mounts without a UUID use a best-effort device fallback: `dev:<path>`.
+  - Remote mounts use: `remote:<src>`.
 
 - Mutation: set or clear an alias (empty string clears)
 
 ```
 mutation {
-  setStorageVolumeAlias(id: "XXXX-XXXX", alias: "Media Drive")
+  setMountAlias(id: "fsuuid:XXXX-XXXX", alias: "Media Drive")
 }
 ```
 
@@ -17,7 +20,7 @@ mutation {
 
 ```
 query {
-  storageVolumes { id name alias mountPoint fsType totalBytes }
+  mounts { id name alias mountPoint fsType totalBytes }
 }
 ```
 

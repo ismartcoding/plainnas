@@ -82,7 +82,7 @@ func TrashPaths(paths []string) ([]string, error) {
 		if fi.IsDir() {
 			kind = "dir"
 		}
-		now := time.Now()
+		now := time.Now().UTC()
 		deletedAt := now.Unix()
 		id := shortid.New()
 

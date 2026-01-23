@@ -1,15 +1,14 @@
 <template>
   <div class="section-title">
     {{ $t('folders') }}
-    <div class="actions">
-      <v-icon-button v-tooltip="isCollapsed ? $t('expand_all') : $t('collapse_all')" @click.prevent="toggleCollapsed">
-        <i-material-symbols:expand-more-rounded v-if="isCollapsed" />
-        <i-material-symbols:expand-less-rounded v-else />
-      </v-icon-button>
-    </div>
+    <v-icon-button v-tooltip="isCollapsed ? $t('expand_all') : $t('collapse_all')" @click.prevent="toggleCollapsed">
+      <i-material-symbols:expand-more-rounded v-if="isCollapsed" />
+      <i-material-symbols:expand-less-rounded v-else />
+    </v-icon-button>
   </div>
   <ul v-show="!isCollapsed" class="nav">
-    <li v-for="item in sortedBuckets" :key="item.id" :class="{ active: selected && item.id === selected }"
+    <li
+v-for="item in sortedBuckets" :key="item.id" :class="{ active: selected && item.id === selected }"
       @click.prevent="view(mainStore, item.id)">
       <span class="title">{{ item.name }}</span><span class="count">{{ item.itemCount.toLocaleString() }}</span>
     </li>

@@ -5,7 +5,7 @@
   </Teleport>
 </template>
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import emitter from './plugins/eventbus'
 import toast from '@/components/toaster'
@@ -14,9 +14,8 @@ import { chachaDecrypt, chachaEncrypt, bitArrayToUint8Array } from './lib/api/cr
 import { parseWebSocketData } from './lib/api/sjcl-arraybuffer'
 import { applyDarkClass, changeColor, changeColorMode, getCurrentMode, getLastSavedAutoColorMode, isModeDark } from './lib/theme'
 import { tokenToKey } from './lib/api/file'
-import { useTasksStore } from '@/stores/tasks'
-import { initQuery, getTasksGQL } from '@/lib/api/query'
-let retryConnectTimeout = 0
+
+let retryConnectTimeout: ReturnType<typeof setTimeout> | 0 = 0
 const { t } = useI18n()
 document.title = t('app_name')
 
@@ -117,22 +116,8 @@ function initializeTheme() {
 }
 
 onMounted(() => {
-  const tasksStore = useTasksStore()
-
-  initQuery({
-    document: getTasksGQL,
-    handle: (data: any, error: string) => {
-      if (error) return
-      tasksStore.setFileTasks(data?.getTasks ?? [])
-    },
-  })
-
   emitter.on('toast', (r: string) => {
     toast(t(r), 'error')
-  })
-
-  emitter.on('file_task_progress', (payload: any) => {
-    tasksStore.handleFileTaskProgress(payload)
   })
 
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {

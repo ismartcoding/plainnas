@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"ismartcoding/plainnas/internal/graph/model"
+	"ismartcoding/plainnas/internal/version"
 )
 
 func buildDeviceInfo() (*model.DeviceInfo, error) {
@@ -126,10 +127,25 @@ func buildDeviceInfo() (*model.DeviceInfo, error) {
 		}
 	}
 
+	modelName := ""
+	if data, err := os.ReadFile("/proc/device-tree/model"); err == nil {
+		modelName = strings.TrimSpace(string(data))
+	}
+	if modelName == "" {
+		if data, err := os.ReadFile("/proc/device-tree/compatible"); err == nil {
+			parts := strings.SplitN(strings.TrimSpace(string(data)), ",", 2)
+			if len(parts) > 0 {
+				modelName = parts[0]
+			}
+		}
+	}
+
 	d := &model.DeviceInfo{
 		Hostname:         hostname,
 		Os:               runtime.GOOS,
 		KernelVersion:    kernel,
+		AppVersion:       version.Version,
+		AppFullVersion:   version.FullVersion(),
 		Arch:             runtime.GOARCH,
 		Uptime:           int64(uptimeSec * 1000),
 		BootTime:         bootTime * 1000,
@@ -146,6 +162,7 @@ func buildDeviceInfo() (*model.DeviceInfo, error) {
 		SwapUsedBytes:    int64(swapUsed),
 		Ips:              ips,
 		Nics:             nics,
+		Model:            modelName,
 	}
 	return d, nil
 }

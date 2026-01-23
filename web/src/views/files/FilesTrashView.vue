@@ -106,6 +106,7 @@ import { remove } from 'lodash-es'
 import { useFilesStore } from '@/stores/files'
 import { buildQuery } from '@/lib/search'
 import { getTrashDisplayName } from '@/lib/trash'
+import { shouldHideSystemPath } from '@/lib/system-folders'
 
 const isPhone = inject('isPhone') as boolean
 const { t } = useI18n()
@@ -243,6 +244,7 @@ const { loading, fetch } = initLazyQuery({
     } else {
       const list: IFile[] = []
       for (const item of data.files) {
+        if (shouldHideSystemPath(item?.path, !!item?.isDir)) continue
         list.push(enrichFile(item, urlTokenKey.value))
       }
       items.value = list

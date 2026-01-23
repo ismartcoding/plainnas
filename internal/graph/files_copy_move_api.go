@@ -160,8 +160,8 @@ func moveFileOpWithProgress(src string, dst string, overwrite bool, progress *fi
 			if err2 := copyFileContentsWithProgress(src, dst, func(n int64) {
 				safeAddBytes(progress, n)
 			}); err2 != nil {
-			return false, err
-		}
+				return false, err
+			}
 			safeAddItem(progress)
 		}
 		_ = os.RemoveAll(src)

@@ -2,6 +2,10 @@
 
 This document describes PlainNAS data storage layout and the search indexing design.
 
+## Disk Manager
+
+Disk enumeration and whole-disk formatting behavior is documented in [docs/disk-manager.md](docs/disk-manager.md).
+
 ## Data directory
 
 All paths below are under the data directory `~/.plainnas/data` (see constants for defaults).
@@ -20,7 +24,6 @@ All paths below are under the data directory `~/.plainnas/data` (see constants f
 
 ## Cache (memory + Pebble)
 
-- In-memory cache: `patrickmn/go-cache`, default 5m TTL. See [internal/cache/memory.go](internal/cache/memory.go)
 - Persistent cache: simple TTL wrapper backed by Pebble (shared DB). See [internal/cache/pebble.go](internal/cache/pebble.go)
 - Thumbnails: generated on demand and cached in Pebble using a content-derived key (prefix `thumb:`) composed from path, size, quality, and file metadata.
 	- Read/write: [cmd/services/api/fs.go](cmd/services/api/fs.go)

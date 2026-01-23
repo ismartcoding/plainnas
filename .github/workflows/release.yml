@@ -29,24 +29,47 @@ jobs:
       - name: Get version info
         id: vars
         run: |
-          echo "VERSION=$(grep 'Version[[:space:]]*=' cmd/version.go | awk -F '"' '{print $2}')" >> $GITHUB_OUTPUT
+          echo "VERSION=$(grep 'Version[[:space:]]*=' internal/version/version.go | awk -F '"' '{print $2}')" >> $GITHUB_OUTPUT
           echo "GIT_COMMIT=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
 
       - name: Build binary
+        env:
+          UPDATE_PUBLIC_KEY: ${{ secrets.UPDATE_PUBLIC_KEY }}
         run: |
+          if [ -z "$UPDATE_PUBLIC_KEY" ]; then
+            echo "missing secret: UPDATE_PUBLIC_KEY" >&2
+            exit 1
+          fi
+
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o plainnas-${{ matrix.goos }}-${{ matrix.goarch }} \
-            -ldflags "-X 'ismartcoding/plainnas/cmd.BuildTime=${{ steps.vars.outputs.BUILD_TIME }}' -X 'ismartcoding/plainnas/cmd.GitCommit=${{ steps.vars.outputs.GIT_COMMIT }}'"
+            -ldflags "-X 'ismartcoding/plainnas/internal/version.BuildTime=${{ steps.vars.outputs.BUILD_TIME }}' -X 'ismartcoding/plainnas/internal/version.GitCommit=${{ steps.vars.outputs.GIT_COMMIT }}' -X 'ismartcoding/plainnas/internal/update.DefaultPubKeyB64=${UPDATE_PUBLIC_KEY}'"
+
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o plainnas-updater-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/updater
 
       - name: Zip binary
         run: |
-          zip plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip plainnas-${{ matrix.goos }}-${{ matrix.goarch }}
+          zip plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip \
+            plainnas-${{ matrix.goos }}-${{ matrix.goarch }} \
+            plainnas-updater-${{ matrix.goos }}-${{ matrix.goarch }}
+
+      - name: Generate sha256 + signature
+        env:
+          UPDATE_PRIVATE_KEY: ${{ secrets.UPDATE_PRIVATE_KEY }}
+        run: |
+          sha256sum plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip > plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip.sha256
+          go run ./scripts/sign-ed25519.go \
+            --in plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip.sha256 \
+            --out plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip.sha256.sig
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip
-          path: plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip
+          name: plainnas-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip
+            plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip.sha256
+            plainnas-${{ matrix.goos }}-${{ matrix.goarch }}.zip.sha256.sig
 
   release:
     needs: build
@@ -65,4 +88,4 @@ jobs:
           body: "## What's Changed"
           draft: true
           prerelease: false
-          artifacts: ./artifacts/**/plainnas-*.zip
+          artifacts: ./artifacts/**/plainnas-*.zip,./artifacts/**/plainnas-*.zip.sha256,./artifacts/**/plainnas-*.zip.sha256.sig

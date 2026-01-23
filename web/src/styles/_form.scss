@@ -10,7 +10,7 @@
     gap: 16px;
     margin-block-end: 16px;
     align-items: center;
-    
+
     &>* {
         flex: 1;
     }
@@ -60,33 +60,42 @@
 
 
 }
+
 .v-outlined-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 1px solid var(--md-sys-color-outline);
-  border-radius: 20px;
-  padding: 8px 16px;
-  background-color: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  letter-spacing: 0.1px;
-  text-decoration: none;
-  cursor: pointer;
-  transition: box-shadow 0.2s;
-  height: 40px;
-  min-width: 64px;
-  position: relative;
-  overflow: hidden;
-  &:disabled {
-    border-color: rgba(0, 0, 0, 0.12);
-    color: rgba(0, 0, 0, 0.38);
-    cursor: default;
-    box-shadow: none;
-  }
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: 20px;
+    padding: 8px 16px;
+    background-color: transparent;
+    color: var(--md-sys-color-on-surface);
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+    height: 40px;
+    min-width: 64px;
+    position: relative;
+    overflow: hidden;
+
+    &:disabled {
+        // Material-ish disabled treatment: use on-surface at lower opacity.
+        // Use color-mix so light/dark themes both look correct.
+        border-color: rgba(0, 0, 0, 0.12);
+        color: rgba(0, 0, 0, 0.38);
+        cursor: default;
+        box-shadow: none;
+
+        @supports (color: color-mix(in srgb, black 50%, white)) {
+            border-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+            color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+        }
+    }
 }
 
 .btn-icon:hover:not(:disabled):not(.active),
@@ -101,8 +110,15 @@
 }
 
 .dark {
+
     .btn-icon:hover:not(:disabled),
     .v-outlined-button:hover:not(:disabled) {
         background-color: rgba(255, 255, 255, 0.08);
+    }
+
+    // Fallback for browsers without color-mix(): the base :disabled uses black rgba.
+    .v-outlined-button:disabled {
+        border-color: rgba(255, 255, 255, 0.12);
+        color: rgba(255, 255, 255, 0.38);
     }
 }

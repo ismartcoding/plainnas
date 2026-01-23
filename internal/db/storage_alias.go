@@ -3,6 +3,8 @@ package db
 // Persistent mapping between storage volume ID and user-defined alias.
 // Stored in Pebble as a JSON map.
 
+import "encoding/json"
+
 func storageVolumeAliasKey() string {
 	return "storage:volume_alias"
 }
@@ -20,7 +22,12 @@ func StoreVolumeAliasMap(m map[string]string) error {
 	if m == nil {
 		m = map[string]string{}
 	}
-	return GetDefault().StoreJSON(storageVolumeAliasKey(), m)
+	data, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	// This is user-facing configuration; make it durable immediately.
+	return GetDefault().Set([]byte(storageVolumeAliasKey()), data, syncWriteOptions())
 }
 
 // SetVolumeAlias updates the alias for a given volume ID.

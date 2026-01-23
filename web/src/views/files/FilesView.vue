@@ -1,6 +1,7 @@
 <template>
   <div class="top-app-bar">
-    <v-checkbox touch-target="wrapper" :checked="allChecked" :indeterminate="!allChecked && checked"
+    <v-checkbox
+touch-target="wrapper" :checked="allChecked" :indeterminate="!allChecked && checked"
       @change="toggleAllChecked" />
     <div class="title">
       <span v-if="selectedIds.length">{{ $t('x_selected', {
@@ -10,7 +11,8 @@
       <div v-else class="breadcrumb">
         <template v-for="(item, index) in breadcrumbPaths" :key="item.path">
           <template v-if="index === 0">
-            <span v-if="index === breadcrumbPaths.length - 1 || item.path === breadcrumbCurrentDir"
+            <span
+v-if="index === breadcrumbPaths.length - 1 || item.path === breadcrumbCurrentDir"
               v-tooltip="getPageStats()">{{ item.name }} ({{ total }})</span>
             <a v-else v-tooltip="getPageStats()" href="#" @click.stop.prevent="navigateToDir(item.path)">{{ item.name
               }}</a>
@@ -39,7 +41,8 @@
     </div>
 
     <div v-if="!isPhone && !checked" class="actions">
-      <FilesActionButtons :current-dir="currentDir" :show-hidden="filter.showHidden" :can-paste="canPaste()"
+      <FilesActionButtons
+:current-dir="currentDir" :show-hidden="filter.showHidden" :can-paste="canPaste()"
         :pasting="pasting" :refreshing="refreshing" :sorting="sorting" :sort-items="sortItems"
         :file-sort-by="fileSortBy" @create-dir="createDir" @upload-files="uploadFilesClick" @upload-dir="uploadDirClick"
         @paste-dir="pasteDir" @refresh-current-dir="refreshCurrentDir" @sort="sort"
@@ -48,7 +51,8 @@
   </div>
 
   <div v-if="isPhone && !checked" class="secondary-actions">
-    <FilesActionButtons :current-dir="currentDir" :show-hidden="filter.showHidden" :can-paste="canPaste()"
+    <FilesActionButtons
+:current-dir="currentDir" :show-hidden="filter.showHidden" :can-paste="canPaste()"
       :pasting="pasting" :refreshing="refreshing" :sorting="sorting" :sort-items="sortItems" :file-sort-by="fileSortBy"
       @create-dir="createDir" @upload-files="uploadFilesClick" @upload-dir="uploadDirClick" @paste-dir="pasteDir"
       @refresh-current-dir="refreshCurrentDir" @sort="sort" @toggle-show-hidden="onToggleShowHidden" />
@@ -62,10 +66,12 @@
   <div class="scroller-wrapper" @dragover.stop.prevent="fileDragEnter">
     <div v-show="dropping" class="drag-mask" @drop.stop.prevent="dropFiles2" @dragleave.stop.prevent="fileDragLeave">{{
       $t('release_to_send_files') }}</div>
-    <VirtualList v-if="items.length > 0" class="scroller main-list" :data-key="'id'" :data-sources="items"
+    <VirtualList
+v-if="items.length > 0" class="scroller main-list" :data-key="'id'" :data-sources="items"
       :estimate-size="80">
       <template #item="{ index, item }">
-        <FileListItem :item="item" :index="index" :selected-ids="selectedIds" :shift-effecting-ids="shiftEffectingIds"
+        <FileListItem
+:item="item" :index="index" :selected-ids="selectedIds" :shift-effecting-ids="shiftEffectingIds"
           :should-select="shouldSelect" :is-phone="isPhone" :image-error-ids="imageErrorIds"
           :extension-image-error-ids="extensionImageErrorIds" :can-paste="canPaste()"
           :handle-item-click="handleItemClick" :handle-mouse-over="handleMouseOver" :toggle-select="toggleSelect"
@@ -81,7 +87,8 @@
       {{ $t(noDataKey(loading)) }}
     </div>
     <input ref="fileInput" style="display: none" type="file" multiple @change="uploadChanged" />
-    <input ref="dirFileInput" style="display: none" type="file" multiple webkitdirectory mozdirectory directory
+    <input
+ref="dirFileInput" style="display: none" type="file" multiple webkitdirectory mozdirectory directory
       @change="dirUploadChanged" />
   </div>
 </template>
@@ -116,6 +123,7 @@ import { replacePath } from '@/plugins/router'
 import { remove } from 'lodash-es'
 import { useFilesStore } from '@/stores/files'
 import { getStorageVolumeTitle } from '@/lib/volumes'
+import { shouldHideSystemPath } from '@/lib/system-folders'
 
 const isPhone = inject('isPhone') as boolean
 const { t } = useI18n()
@@ -225,6 +233,7 @@ const { loading, fetch } = initLazyQuery({
     } else {
       const list: IFile[] = []
       for (const item of data.files) {
+        if (shouldHideSystemPath(item?.path, !!item?.isDir)) continue
         list.push(enrichFile(item, urlTokenKey.value))
       }
       items.value = list

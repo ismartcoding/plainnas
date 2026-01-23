@@ -152,7 +152,7 @@ initQuery({
       counter.value.videos = data.videoCount
       counter.value.images = data.imageCount
       counter.value.audios = data.audioCount
-      const vols = data.storageVolumes
+      const vols = (data.mounts ?? []).filter((m: any) => !String(m?.path ?? '').trim())
       const totalBytes = sumBy(vols, (it: any) => it.totalBytes)
       const freeBytes = sumBy(vols, (it: any) => it.freeBytes)
       counter.value.total = totalBytes

@@ -1,8 +1,8 @@
 import { ref, type Ref } from 'vue'
 import type { ApolloCache, ApolloError } from '@apollo/client/core'
-import { createCopyTaskGQL, createDirGQL, createMoveTaskGQL, initMutation, renameFileGQL } from '@/lib/api/mutation'
+import { createCopyTaskGQL, createDirGQL, createMoveTaskGQL, deleteFilesGQL, initMutation, renameFileGQL } from '@/lib/api/mutation'
 import { enrichFile, isAudio, isImage, isVideo, type IFile } from '@/lib/file'
-import { initQuery, storageVolumesGQL } from '@/lib/api/query'
+import { initQuery, mountsGQL, pathStatGQL } from '@/lib/api/query'
 import { useI18n } from 'vue-i18n'
 import toast from '@/components/toaster'
 import { download, encryptUrlParams, getFileId, getFileName, getFileUrl, getFileUrlByPath } from '@/lib/api/file'
@@ -11,10 +11,13 @@ import { encodeBase64 } from '@/lib/strutil'
 import { buildQuery, parseQuery, type IFilterField } from '@/lib/search'
 import { findIndex, remove } from 'lodash-es'
 import { getApiBaseUrl } from '@/lib/api/api'
-import type { IApp, IFileFilter, IStorageVolume } from '@/lib/interfaces'
+import type { IApp, IFileFilter, IStorageMount } from '@/lib/interfaces'
 import type sjcl from 'sjcl'
 import { sortStorageVolumesByTitle } from '@/lib/volumes'
 import { useTasksStore } from '@/stores/tasks'
+import apollo from '@/plugins/apollo'
+import { promptModal } from '@/components/modal'
+import FileConflictModal, { type ConflictChoice, type ConflictMode } from '@/components/files/FileConflictModal.vue'
 
 export const useCreateDir = (urlTokenKey: Ref<sjcl.BitArray | null>, items: Ref<IFile[]>) => {
   const createPath = ref('')
@@ -59,14 +62,15 @@ export const useRename = (fetch: () => void) => {
 
 export const useVolumes = () => {
   const { t } = useI18n()
-  const volumes = ref<IStorageVolume[]>([])
+  const volumes = ref<IStorageMount[]>([])
   const { refetch } = initQuery({
-    handle: (data: { storageVolumes: IStorageVolume[] }, error: string) => {
+    handle: (data: { mounts: IStorageMount[] }, error: string) => {
       if (!error) {
-        volumes.value = sortStorageVolumesByTitle(data.storageVolumes ?? [], t)
+        const mountedOnly = (data.mounts ?? []).filter((m) => !String(m?.path ?? '').trim())
+        volumes.value = sortStorageVolumesByTitle(mountedOnly, t)
       }
     },
-    document: storageVolumesGQL,
+    document: mountsGQL,
   })
 
   return { volumes, refetch }
@@ -150,6 +154,24 @@ export const useCopyPaste = (items: Ref<IFile[]>, isCut: Ref<boolean>, selectedF
 
   const { t } = useI18n()
 
+  async function getPathInfo(path: string): Promise<{ exists: boolean; isDir?: boolean }> {
+    try {
+      const r = await apollo.a.query({
+        query: pathStatGQL,
+        variables: { path },
+        fetchPolicy: 'network-only',
+      })
+      const st = r?.data?.pathStat
+      return { exists: !!st?.exists, isDir: !!st?.isDir }
+    } catch {
+      return { exists: false }
+    }
+  }
+
+  async function promptConflict(mode: ConflictMode, details?: string): Promise<ConflictChoice | undefined> {
+    return promptModal<ConflictChoice>(FileConflictModal, { mode, details })
+  }
+
   const onError = (error: ApolloError) => {
     toast(t(error.message))
   }
@@ -175,6 +197,8 @@ export const useCopyPaste = (items: Ref<IFile[]>, isCut: Ref<boolean>, selectedF
   copyDone(onDone)
   cutDone(onDone)
 
+  const { mutate: deleteFilesMutate } = initMutation({ document: deleteFilesGQL })
+
   return {
     loading: copyLoading || cutLoading,
     canPaste() {
@@ -188,13 +212,95 @@ export const useCopyPaste = (items: Ref<IFile[]>, isCut: Ref<boolean>, selectedF
       selectedFiles.value = items.value.filter((it) => ids.includes(it.id))
       isCut.value = true
     },
-    paste(dir: string) {
+    async paste(dir: string) {
       dstDir.value = dir
-      const ops = selectedFiles.value.map((file) => ({
+
+      const selection = [...selectedFiles.value]
+      if (selection.length === 0) return
+
+      const targets = selection.map((file) => ({
+        file,
         src: file.path,
-        dst: dir + '/' + file.name,
-        overwrite: false,
+        dst: (dir.endsWith('/') ? dir + file.name : dir + '/' + file.name).replace(/\/+?/g, '/'),
       }))
+
+      // Detect conflicts by checking destination existence.
+      const dirConflicts: Array<{ file: IFile; dst: string }> = []
+      const fileConflicts: Array<{ file: IFile; dst: string }> = []
+      for (const t0 of targets) {
+        const info = await getPathInfo(t0.dst)
+        if (!info.exists) continue
+        if (t0.file.isDir) dirConflicts.push({ file: t0.file, dst: t0.dst })
+        else fileConflicts.push({ file: t0.file, dst: t0.dst })
+      }
+
+      const dirConflictByDst = new Set(dirConflicts.map((c) => c.dst))
+      const fileConflictByDst = new Set(fileConflicts.map((c) => c.dst))
+
+      let dirChoice: ConflictChoice | undefined
+      let fileChoice: ConflictChoice | undefined
+
+      // Folder -> Folder conflicts
+      if (dirConflicts.length > 0) {
+        const details = dirConflicts.length === 1 ? dirConflicts[0].dst : `${dirConflicts.length} folders`
+        dirChoice = await promptConflict('folder-folder', details)
+        if (!dirChoice) return
+
+        if (dirChoice === 'replace') {
+          try {
+            await deleteFilesMutate({ paths: dirConflicts.map((c) => c.dst) })
+          } catch {
+            return
+          }
+        }
+      }
+
+      // File -> File conflicts
+      if (fileConflicts.length > 0) {
+        const hasOnlyOneFile = selection.filter((s) => !s.isDir).length === 1
+        const mode: ConflictMode = hasOnlyOneFile ? 'file-file-single' : 'file-file-multiple'
+        const details = fileConflicts.length === 1 ? fileConflicts[0].dst : `${fileConflicts.length} files`
+        fileChoice = await promptConflict(mode, details)
+        if (!fileChoice) return
+
+        if (fileChoice === 'skip') {
+          // Remove conflicting files only.
+          const skipSet = new Set(fileConflicts.map((c) => c.file.path))
+          for (let i = selection.length - 1; i >= 0; i--) {
+            if (!selection[i].isDir && skipSet.has(selection[i].path)) {
+              selection.splice(i, 1)
+            }
+          }
+        }
+      }
+
+      // Recompute targets after possible skip.
+      const finalTargets = selection.map((file) => ({
+        file,
+        src: file.path,
+        dst: (dir.endsWith('/') ? dir + file.name : dir + '/' + file.name).replace(/\/+?/g, '/'),
+      }))
+
+      const ops = finalTargets.map((tgt) => {
+        const dst = tgt.dst
+        const isDir = tgt.file.isDir
+        const dstConflictsDir = dirConflictByDst.has(dst)
+        const dstConflictsFile = fileConflictByDst.has(dst)
+
+        // Default behavior: keep both (backend will uniquify when overwrite=false).
+        let overwrite = false
+
+        if (isDir && dstConflictsDir) {
+          overwrite = dirChoice === 'merge' || dirChoice === 'replace'
+        }
+
+        if (!isDir && dstConflictsFile) {
+          overwrite = fileChoice === 'replace'
+        }
+
+        return { src: tgt.src, dst, overwrite }
+      })
+
       if (isCut.value) {
         cutMutate({ ops })
       } else {
@@ -256,6 +362,7 @@ export const useSearch = () => {
       filter.rootPath = ''
       filter.relativePath = ''
       filter.trash = false
+      filter.fileSize = undefined
       fields.forEach((it) => {
         if (it.name === 'text') {
           filter.text = it.value
@@ -269,6 +376,8 @@ export const useSearch = () => {
           filter.showHidden = it.value === 'true'
         } else if (it.name === 'trash') {
           filter.trash = it.value === 'true'
+        } else if (it.name === 'file_size') {
+          filter.fileSize = it.op + it.value
         }
       })
     },
@@ -313,6 +422,19 @@ export const useSearch = () => {
           op: '',
           value: 'true',
         })
+      }
+
+      if (filter.fileSize !== undefined && filter.fileSize !== '') {
+        const match = filter.fileSize.match(/^([><=!]+)?(.+)$/)
+        if (match) {
+          const op = match[1] || ''
+          const value = match[2]
+          fields.push({
+            name: 'file_size',
+            op: op,
+            value: value,
+          })
+        }
       }
 
       return encodeBase64(buildQuery(fields))

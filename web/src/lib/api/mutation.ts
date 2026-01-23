@@ -110,6 +110,18 @@ export const setDeviceNameGQL = gql`
   }
 `
 
+export const revokeSessionGQL = gql`
+  mutation revokeSession($clientId: String!) {
+    revokeSession(clientId: $clientId)
+  }
+`
+
+export const logoutGQL = gql`
+  mutation logout {
+    logout
+  }
+`
+
 export const copyFileGQL = gql`
   mutation copyFile($src: String!, $dst: String!, $overwrite: Boolean!) {
     copyFile(src: $src, dst: $dst, overwrite: $overwrite)
@@ -158,6 +170,12 @@ export const createMoveTaskGQL = gql`
   }
 `
 
+export const deleteFilesGQL = gql`
+  mutation deleteFiles($paths: [String!]!) {
+    deleteFiles(paths: $paths)
+  }
+`
+
 export const trashFilesGQL = gql`
   mutation trashFiles($paths: [String!]!) {
     trashFiles(paths: $paths)
@@ -167,6 +185,12 @@ export const trashFilesGQL = gql`
 export const restoreFilesGQL = gql`
   mutation restoreFiles($paths: [String!]!) {
     restoreFiles(paths: $paths)
+  }
+`
+
+export const formatDiskGQL = gql`
+  mutation formatDisk($path: String!) {
+    formatDisk(path: $path)
   }
 `
 
@@ -337,9 +361,9 @@ export const rebuildMediaIndexGQL = gql`
 `
 
 // Storage volume alias
-export const setStorageVolumeAliasGQL = gql`
-  mutation setStorageVolumeAlias($id: String!, $alias: String!) {
-    setStorageVolumeAlias(id: $id, alias: $alias)
+export const setMountAliasGQL = gql`
+  mutation setMountAlias($id: String!, $alias: String!) {
+    setMountAlias(id: $id, alias: $alias)
   }
 `
 

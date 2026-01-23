@@ -66,11 +66,30 @@ type FileTask {
   updatedAt: Time!
 }
 
+type Session {
+  clientId: String!
+  clientName: String!
+  lastActive: Time!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+type Event {
+  id: ID!
+  type: String!
+  message: String!
+  clientId: String!
+  createdAt: Time!
+}
+
 
 type Mutation {
   setDeviceName(name: String!): Boolean!
   setKeyValue(key: String!, value: String!): Boolean!
   deleteKeyValue(key: String!): Boolean!
+  # Revoke the current client's session
+  logout: Boolean!
+  revokeSession(clientId: String!): Boolean!
   setMediaSourceDirs(dirs: [String!]!): Boolean!
   setSambaSettings(input: SambaSettingsInput!): Boolean!
   setSambaUserPassword(password: String!): Boolean!
@@ -113,14 +132,20 @@ type Mutation {
   updateTagRelations(type: DataType!, item: TagRelationStub!, addTagIds: [ID!]!, removeTagIds: [ID!]!): Boolean!
   removeFromTags(type: DataType!, tagIds: [ID!]!, query: String!): Boolean!
   # Storage volume alias
-  setStorageVolumeAlias(id: String!, alias: String!): Boolean!
+  setMountAlias(id: String!, alias: String!): Boolean!
+
+  # Storage disk management
+  formatDisk(path: String!): Boolean!
 }
 
 type Query {
   app: App!
+  sessions: [Session!]!
+  events(limit: Int!): [Event!]!
   favoriteFolders: [FavoriteFolder!]!
   getTasks: [FileTask!]!
-  storageVolumes: [StorageVolume!]!
+  mounts: [StorageMount!]!
+  disks: [StorageDisk!]!
   mediaSourceDirs: [String!]!
   sambaSettings: SambaSettings!
   images(offset: Int!, limit: Int!, query: String!, sortBy: FileSortBy!): [Image!]!
@@ -133,11 +158,32 @@ type Query {
   audioCount(query: String!): Int!
   videoCount(query: String!): Int!
   deviceInfo: DeviceInfo!
-  fileInfo(id: ID!, path: String!): FileInfo
+  appUpdate: AppUpdate!
+  pathStat(path: String!): PathStat!
+  pathStats(paths: [String!]!): [PathStatResult!]!
+  fileInfo(id: ID!, path: String!, includeDirSize: Boolean = false): FileInfo
   files(offset: Int!, limit: Int!, query: String!, sortBy: FileSortBy!): [File!]!
   recentFiles: [File!]!
   trashCount: Int!
   uploadedChunks(fileId: String!): [Int!]!
+}
+
+type PathStat {
+  exists: Boolean!
+  isDir: Boolean!
+}
+
+type PathStatResult {
+  path: String!
+  exists: Boolean!
+  isDir: Boolean!
+}
+
+type AppUpdate {
+  currentVersion: String!
+  latestVersion: String
+  hasUpdate: Boolean!
+  url: String
 }
 
 type PlaylistAudio {
@@ -158,8 +204,6 @@ type App {
   urlToken: String!
   httpPort: Int!
   httpsPort: Int!
-  deviceName: String!
-  appVersion: String!
   audios: [PlaylistAudio!]!
   audioCurrent: String!
   audioMode: String!
@@ -178,23 +222,45 @@ enum MediaPlayMode {
   SHUFFLE
 }
 
-type StorageVolume {
-  # Stable volume identifier.
-  # - Local block devices: "<uuid>" (filesystem UUID)
-  # - Remote mounts: "remote:<src>" (mount source)
+type StorageMount {
+  # Stable identifier.
+  # - Mounted volumes:
+  #   - "fsuuid:<uuid>" when a filesystem UUID is available
+  #   - "dev:<path>" as a best-effort fallback for local block devices
+  #   - "remote:<src>" for remote mounts
+  # - Partitions: "part:<uuid>" when available, else "part:<path>".
   id: String!
   name: String!
-  mountPoint: String!
-  fsType: String!
+
+  # Present for partitions (e.g. "/dev/sdb1").
+  path: String
+  partitionNum: Int
+  label: String
+  uuid: String
+
+  # Present for mounts; may also be present for partitions.
+  mountPoint: String
+  fsType: String
+
+  # Capacity. For partitions this is the raw partition size.
   totalBytes: Long!
-  usedBytes: Long!
-  freeBytes: Long!
-  removable: Boolean!
-  remote: Boolean!
-  # Drive technology for local volumes, or "Remote" for network mounts
-  driveType: String!
-  # Optional user-defined alias for display
+  # Only meaningful for mounted volumes.
+  usedBytes: Long
+  freeBytes: Long
+
+  # Volume-only metadata.
   alias: String
+  remote: Boolean!
+  driveType: String
+  parentDevice: String
+}
+
+type StorageDisk {
+  name: String!
+  path: String!
+  sizeBytes: Long!
+  removable: Boolean!
+  model: String
 }
 
 scalar Long
@@ -203,6 +269,8 @@ type DeviceInfo {
   hostname: String!
   os: String!
   kernelVersion: String!
+  appVersion: String!
+  appFullVersion: String!
   arch: String!
   uptime: Long!
   bootTime: Long!
@@ -219,6 +287,7 @@ type DeviceInfo {
   swapUsedBytes: Long!
   ips: [String!]!
   nics: [NicInfo!]!
+  model: String!
 }
 
 type NicInfo {
