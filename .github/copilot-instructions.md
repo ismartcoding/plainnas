@@ -81,14 +81,22 @@ PlainNAS is a Go-based NAS (Network Attached Storage) system with a Vue 3 web fr
 - Do **not** add Windows/macOS fallbacks, multi-platform abstractions, or non-Linux build stubs unless explicitly requested.
 - It is acceptable for non-Linux builds to fail; correctness on Linux takes priority.
 
+## Linux-Only File Naming
+- Prefer **generic filenames** (e.g. `storage_mounts_list.go`) over `*_linux.go` suffixes for new files, since this repo is Linux-only.
+- Only use OS-suffixed filenames when a build tag split is truly required (rare here) or when matching an existing established file pattern.
+
 ## VS Code / Copilot Rules
 - If you change application behavior or logic, update the relevant Markdown docs in `docs/` (preferred) and/or `README.md` (keep docs in sync with code).
 - Prefer minimal, readable, maintainable code; avoid unnecessary abstractions and duplication.
 - Do not add compatibility/migration/backfill code unless explicitly requested; it is acceptable to require deleting/rebuilding the DB for development workflows.
 - Prefer index-backed fast paths; avoid full scans and N+1 patterns.
 - Prefer root-cause fixes over workaround logic (e.g., extra guards/dedup that mask bugs). If an invariant is broken, fix the source and let issues surface during development.
+- **Timeouts are not yours to “tune”:** Do **not** change network/HTTP/SOAP/GraphQL timeout values (or add new extended timeouts) unless the user explicitly requests it. Treat timeout changes as behavior changes.
+- **Fail-fast default:** When timeouts are needed, prefer small, conservative values (e.g. 2–3s) and avoid “make it huge so it works”. If a longer timeout is required, make it configurable (config/env) and get explicit approval.
+- **No HTTP context in API requests:** Do **not** use `http.NewRequestWithContext(...)` / `req.WithContext(...)` for outgoing HTTP calls in API code paths (GraphQL/REST/SOAP/etc.) unless explicitly requested. Prefer `http.Client{Timeout: ...}` for request limits.
 - Keep `internal/graph/schema.resolvers.go` lightweight: resolvers should only validate/translate inputs and delegate to focused files (e.g. `internal/graph/*_api.go`). Do not put substantial business logic in `schema.resolvers.go`.
 - Frontend templates/HTML: keep markup flat and readable—minimize nesting, avoid wrapper `<div>`s unless needed, and do not add `class` attributes unless they are required for styling/layout/testing.
+- Frontend UI/UX (minimalism): prefer clean, spacious, “Google/Material-like” minimal UI—show only essential information, avoid redundant metadata blocks, keep copy short, and bias toward one clear primary action.
 - Do not remove the `<pre class="view-raw">` element; it is intentionally kept for troubleshooting.
 - Frontend styling rule: avoid copy-pasting the same scoped CSS across pages/components. If a style pattern is used in more than one place, extract it into an appropriate shared home (a shared stylesheet under `web/src/styles/`, a component-level style, or a small reusable UI component) and reuse it via classes/components instead of duplicating blocks in each `.vue` file. Keep `scoped` styles for truly view-specific tweaks only.
  - Prefer SCSS-style nesting for component-local complex popovers and help cards (for readability). When editing a component's `<style scoped>` block, prefer nested selectors (e.g. `.dm-help-pop { .title { ... } .meta { ... } }`) instead of long flattened selectors.

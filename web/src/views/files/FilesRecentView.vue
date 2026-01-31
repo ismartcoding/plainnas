@@ -37,11 +37,11 @@ v-if="items.length > 0" class="scroller main-list" :data-key="'id'" :data-source
 
 <script setup lang="ts">
 import toast from '@/components/toaster'
-import { onActivated, onDeactivated, ref } from 'vue'
+import { computed, onActivated, onDeactivated, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
-import { type IFile, canOpenInBrowser, canView, enrichFile } from '@/lib/file'
-import { getFileUrlByPath } from '@/lib/api/file'
+import { type IFile, canOpenInBrowser, canPreviewAsPdf, canView, enrichFile } from '@/lib/file'
+import { getFileUrlByPath, getPdfPreviewUrlByPath } from '@/lib/api/file'
 import { noDataKey } from '@/lib/list'
 import { useDownload, useView } from '@/hooks/files'
 import { openModal } from '@/components/modal'
@@ -65,7 +65,8 @@ const sources = ref([])
 const isPhone = getIsPhone()
 
 const tempStore = useTempStore()
-const { urlTokenKey } = storeToRefs(tempStore)
+const { app, urlTokenKey } = storeToRefs(tempStore)
+const docPreviewAvailable = computed(() => !!app.value?.docPreviewAvailable)
 const items = ref<IFile[]>([])
 
 const { selectedIds, allChecked, realAllChecked, clearSelection, toggleAllChecked, toggleSelect, total, checked, shiftEffectingIds, handleItemClick, handleMouseOver, selectAll, shouldSelect } =
@@ -99,7 +100,13 @@ setTempValueDone((r: any) => {
 })
 
 const clickItem = (item: IFile) => {
-  if (canOpenInBrowser(item.name)) {
+  if (canPreviewAsPdf(item.name)) {
+    if (docPreviewAvailable.value) {
+      window.open(getPdfPreviewUrlByPath(urlTokenKey.value, item.path), '_blank')
+    } else {
+      downloadFile(item.path)
+    }
+  } else if (canOpenInBrowser(item.name)) {
     window.open(getFileUrlByPath(urlTokenKey.value, item.path), '_blank')
   } else if (canView(item.name)) {
     view(items.value, item)

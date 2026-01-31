@@ -25,6 +25,8 @@ let retryTime = 1000 // 1s
 const EventType: { [key: number]: string } = {
   4: 'media_scan_progress',
   6: 'file_task_progress',
+  7: 'dlna_renderer_found',
+  8: 'dlna_discovery_done',
 }
 
 async function connect() {

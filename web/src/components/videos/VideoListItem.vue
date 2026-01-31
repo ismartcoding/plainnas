@@ -1,14 +1,13 @@
 <template>
-  <section
-    v-if="!isPhone"
-    class="media-item selectable-card"
+  <section v-if="!isPhone" class="media-item selectable-card"
     :class="{ selected: selectedIds.includes(item.id), selecting: shiftEffectingIds.includes(item.id) }"
     @click.stop="handleItemClick($event, item, index, () => view(index))"
-    @mouseenter.stop="handleMouseOver($event, index)"
-  >
+    @mouseenter.stop="handleMouseOver($event, index)">
     <div class="start">
-      <v-checkbox v-if="shiftEffectingIds.includes(item.id)" class="checkbox" touch-target="wrapper" :checked="shouldSelect" @click.stop="toggleSelect($event, item, index)" />
-      <v-checkbox v-else class="checkbox" touch-target="wrapper" :checked="selectedIds.includes(item.id)" @click.stop="toggleSelect($event, item, index)" />
+      <v-checkbox v-if="shiftEffectingIds.includes(item.id)" class="checkbox" touch-target="wrapper"
+        :checked="shouldSelect" @click.stop="toggleSelect($event, item, index)" />
+      <v-checkbox v-else class="checkbox" touch-target="wrapper" :checked="selectedIds.includes(item.id)"
+        @click.stop="toggleSelect($event, item, index)" />
       <span class="number"><field-id :id="index + 1" :raw="item" /></span>
     </div>
     <div class="image">
@@ -22,19 +21,9 @@
       <a @click.stop.prevent="viewBucket(mainStore, item.bucketId)">{{ bucketsMap[item.bucketId]?.name }}</a>
       <item-tags :tags="item.tags" :type="dataType" :only-links="true" />
     </div>
-    <VideoActionButtons
-      :item="item"
-      :filter="filter"
-      :data-type="dataType"
-      :app="app"
-      :delete-item="deleteItem"
-      :restore="restore"
-      :download-file="downloadFile"
-      :trash="trash"
-      :add-item-to-tags="addItemToTags"
-      :restore-loading="restoreLoading"
-      :trash-loading="trashLoading"
-    />
+    <VideoActionButtons :item="item" :filter="filter" :data-type="dataType" :edit-mode="editMode" :app="app"
+      :delete-item="deleteItem" :restore="restore" :download-file="downloadFile" :trash="trash"
+      :add-item-to-tags="addItemToTags" :restore-loading="restoreLoading" :trash-loading="trashLoading" />
     <div class="time">
       <span v-tooltip="formatDateTime(item.createdAt)">
         {{ formatTimeAgo(item.createdAt) }}
@@ -43,24 +32,20 @@
   </section>
 
   <!-- Phone Layout -->
-  <ListItemPhone
-    v-else
-    :is-selected="selectedIds.includes(item.id)"
-    :is-selecting="shiftEffectingIds.includes(item.id)"
+  <ListItemPhone v-else :is-selected="selectedIds.includes(item.id)" :is-selecting="shiftEffectingIds.includes(item.id)"
     :checkbox-checked="shiftEffectingIds.includes(item.id) ? shouldSelect : selectedIds.includes(item.id)"
-    @click="handleItemClick($event, item, index, () => view(index))"
+    :show-checkbox="editMode" @click="handleItemClick($event, item, index, () => view(index))"
     @mouseenter.stop="handleMouseOver($event, index)"
-    @checkbox-click="(event: MouseEvent) => toggleSelect(event, item, index)"
-  >
+    @checkbox-click="(event: MouseEvent) => toggleSelect(event, item, index)">
     <template #image>
       <div class="image">
         <img v-if="imageErrorIds.includes(item.id)" :src="`/ficons/${getFileExtension(item.path)}.svg`" class="svg" />
         <img v-else class="image-thumb" :src="getFileUrl(item.fileId, '&w=200&h=200')" @error="onImageError(item.id)" />
       </div>
     </template>
-    
+
     <template #title>{{ getTrashDisplayName(getFileName(item.path)) }}</template>
-    
+
     <template #subtitle>
       <div class="subtitle">
         <span>{{ formatFileSize(item.size) }}</span>
@@ -70,21 +55,11 @@
       </div>
       <div class="subtitle">{{ formatTimeAgo(item.createdAt) }}</div>
     </template>
-    
+
     <template #actions>
-      <VideoActionButtons
-        :item="item"
-        :filter="filter"
-        :data-type="dataType"
-        :app="app"
-        :delete-item="deleteItem"
-        :restore="restore"
-        :download-file="downloadFile"
-        :trash="trash"
-        :add-item-to-tags="addItemToTags"
-        :restore-loading="restoreLoading"
-        :trash-loading="trashLoading"
-      />
+      <VideoActionButtons :item="item" :filter="filter" :data-type="dataType" :edit-mode="editMode" :app="app"
+        :delete-item="deleteItem" :restore="restore" :download-file="downloadFile" :trash="trash"
+        :add-item-to-tags="addItemToTags" :restore-loading="restoreLoading" :trash-loading="trashLoading" />
     </template>
   </ListItemPhone>
 </template>
@@ -103,6 +78,7 @@ interface Props {
   shiftEffectingIds: string[]
   shouldSelect: boolean
   isPhone: boolean
+  editMode: boolean
   imageErrorIds: string[]
   bucketsMap: Record<string, IBucket>
   filter: IFilter
@@ -110,7 +86,7 @@ interface Props {
   mainStore: any
   app: any
   // Functions passed from parent
-  handleItemClick: (event: MouseEvent, item: IVideoItem, index: number, callback: () => void) => void
+  handleItemClick: (event: MouseEvent, item: IVideoItem, index: number, view: (i: number) => void) => void
   handleMouseOver: (event: MouseEvent, index: number) => void
   toggleSelect: (event: MouseEvent, item: IVideoItem, index: number) => void
   onImageError: (id: string) => void
@@ -126,4 +102,4 @@ interface Props {
 }
 
 defineProps<Props>()
-</script> 
+</script>

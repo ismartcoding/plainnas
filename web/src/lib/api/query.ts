@@ -167,6 +167,18 @@ export const homeStatsGQL = gql`
   }
 `
 
+export const dlnaRenderersGQL = gql`
+  query {
+    dlnaRenderers {
+      udn
+      name
+      manufacturer
+      modelName
+      location
+    }
+  }
+`
+
 
 export const imagesGQL = gql`
   query images($offset: Int!, $limit: Int!, $query: String!, $sortBy: FileSortBy!) {
@@ -207,6 +219,12 @@ export const filesGQL = gql`
   ${fileFragment}
 `
 
+export const filesCountGQL = gql`
+  query filesCount($query: String!) {
+    filesCount(query: $query)
+  }
+`
+
 export const recentFilesGQL = gql`
   query recentFiles {
     recentFiles {
@@ -238,7 +256,7 @@ export const mountsGQL = gql`
       remote
       driveType
 
-      parentDevice
+      diskID
       path
       partitionNum
       uuid
@@ -249,6 +267,7 @@ export const mountsGQL = gql`
 export const disksGQL = gql`
   query {
     disks {
+      id
       name
       path
       sizeBytes

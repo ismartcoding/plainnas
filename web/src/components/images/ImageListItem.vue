@@ -1,14 +1,13 @@
 <template>
-  <section
-    v-if="!isPhone"
-    class="media-item selectable-card"
+  <section v-if="!isPhone" class="media-item selectable-card"
     :class="{ selected: selectedIds.includes(item.id), selecting: shiftEffectingIds.includes(item.id) }"
     @click.stop="handleItemClick($event, item, index, () => view(index))"
-    @mouseenter.stop="handleMouseOver($event, index)"
-  >
+    @mouseenter.stop="handleMouseOver($event, index)">
     <div class="start">
-      <v-checkbox v-if="shiftEffectingIds.includes(item.id)" class="checkbox" touch-target="wrapper" :checked="shouldSelect" @click.stop="toggleSelect($event, item, index)" />
-      <v-checkbox v-else class="checkbox" touch-target="wrapper" :checked="selectedIds.includes(item.id)" @click.stop="toggleSelect($event, item, index)" />
+      <v-checkbox v-if="shiftEffectingIds.includes(item.id)" class="checkbox" touch-target="wrapper"
+        :checked="shouldSelect" @click.stop="toggleSelect($event, item, index)" />
+      <v-checkbox v-else class="checkbox" touch-target="wrapper" :checked="selectedIds.includes(item.id)"
+        @click.stop="toggleSelect($event, item, index)" />
       <span class="number"><field-id :id="index + 1" :raw="item" /></span>
     </div>
     <img class="image" :src="getFileUrl(item.fileId, '&w=200&h=200')" onerror="this.src='/broken-image.png'" />
@@ -18,19 +17,9 @@
       <a @click.stop.prevent="viewBucket(mainStore, item.bucketId)">{{ bucketsMap[item.bucketId]?.name }}</a>
       <item-tags :tags="item.tags" :type="dataType" :only-links="true" />
     </div>
-    <ImageActionButtons
-      :item="item"
-      :filter="filter"
-      :data-type="dataType"
-      :app="app"
-      :delete-item="deleteItem"
-      :restore="restore"
-      :download-file="downloadFile"
-      :trash="trash"
-      :add-item-to-tags="addItemToTags"
-      :restore-loading="restoreLoading"
-      :trash-loading="trashLoading"
-    />
+    <ImageActionButtons :item="item" :filter="filter" :data-type="dataType" :edit-mode="editMode" :app="app"
+      :delete-item="deleteItem" :restore="restore" :download-file="downloadFile" :trash="trash"
+      :add-item-to-tags="addItemToTags" :restore-loading="restoreLoading" :trash-loading="trashLoading" />
     <div class="time">
       <span v-tooltip="formatDateTime(item.createdAt)">
         {{ formatTimeAgo(item.createdAt) }}
@@ -39,18 +28,15 @@
   </section>
 
   <!-- Phone Layout -->
-  <ListItemPhone
-    v-else
-    :is-selected="selectedIds.includes(item.id)"
-    :is-selecting="shiftEffectingIds.includes(item.id)"
+  <ListItemPhone v-else :is-selected="selectedIds.includes(item.id)" :is-selecting="shiftEffectingIds.includes(item.id)"
     :checkbox-checked="shiftEffectingIds.includes(item.id) ? shouldSelect : selectedIds.includes(item.id)"
-    @click="handleItemClick($event, item, index, () => view(index))"
+    :show-checkbox="editMode" @click="handleItemClick($event, item, index, () => view(index))"
     @mouseenter.stop="handleMouseOver($event, index)"
-    @checkbox-click="(event: MouseEvent) => toggleSelect(event, item, index)"
-  >
+    @checkbox-click="(event: MouseEvent) => toggleSelect(event, item, index)">
     <template #image>
       <div class="image">
-        <img class="image-thumb" :src="getFileUrl(item.fileId, '&w=200&h=200')" onerror="this.src='/broken-image.png'" />
+        <img class="image-thumb" :src="getFileUrl(item.fileId, '&w=200&h=200')"
+          onerror="this.src='/broken-image.png'" />
       </div>
     </template>
 
@@ -66,19 +52,9 @@
     </template>
 
     <template #actions>
-      <ImageActionButtons
-        :item="item"
-        :filter="filter"
-        :data-type="dataType"
-        :app="app"
-        :delete-item="deleteItem"
-        :restore="restore"
-        :download-file="downloadFile"
-        :trash="trash"
-        :add-item-to-tags="addItemToTags"
-        :restore-loading="restoreLoading"
-        :trash-loading="trashLoading"
-      />
+      <ImageActionButtons :item="item" :filter="filter" :data-type="dataType" :edit-mode="editMode" :app="app"
+        :delete-item="deleteItem" :restore="restore" :download-file="downloadFile" :trash="trash"
+        :add-item-to-tags="addItemToTags" :restore-loading="restoreLoading" :trash-loading="trashLoading" />
     </template>
   </ListItemPhone>
 </template>
@@ -97,6 +73,7 @@ interface Props {
   shiftEffectingIds: string[]
   shouldSelect: boolean
   isPhone: boolean
+  editMode: boolean
   bucketsMap: Record<string, IBucket>
   filter: IFilter
   dataType: DataType

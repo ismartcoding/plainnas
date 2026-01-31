@@ -82,8 +82,8 @@ import { formatFileSize } from '@/lib/format'
 import { useI18n } from 'vue-i18n'
 import { useMainStore } from '@/stores/main'
 import { storeToRefs } from 'pinia'
-import { type IFile, canOpenInBrowser, canView, getSortItems, enrichFile, isTextFile } from '@/lib/file'
-import { getFileName, getFileUrlByPath, getFileId } from '@/lib/api/file'
+import { type IFile, canOpenInBrowser, canPreviewAsPdf, canView, getSortItems, enrichFile, isTextFile } from '@/lib/file'
+import { getFileName, getFileUrlByPath, getFileId, getPdfPreviewUrlByPath } from '@/lib/api/file'
 import { noDataKey } from '@/lib/list'
 import emitter from '@/plugins/eventbus'
 import { useDownload, useVolumes, useView, useSearch } from '@/hooks/files'
@@ -148,7 +148,8 @@ const mainStore = useMainStore()
 const { fileSortBy } = storeToRefs(mainStore)
 
 const tempStore = useTempStore()
-const { urlTokenKey } = storeToRefs(tempStore)
+const { app, urlTokenKey } = storeToRefs(tempStore)
+const docPreviewAvailable = computed(() => !!app.value?.docPreviewAvailable)
 const rootDir = computed(() => filter.rootPath)
 // TODO: migrate to volumes for per-root stats if needed
 const { volumes, refetch: refetchStats } = useVolumes()
@@ -405,6 +406,12 @@ function clickItem(item: IFile) {
     // Open text files in new window with custom viewer
     const fileId = getFileId(urlTokenKey.value, item.path)
     window.open(`/text-file?id=${encodeURIComponent(fileId)}`, '_blank')
+  } else if (canPreviewAsPdf(item.name)) {
+    if (docPreviewAvailable.value) {
+      window.open(getPdfPreviewUrlByPath(urlTokenKey.value, item.path), '_blank')
+    } else {
+      downloadFile(item.path)
+    }
   } else if (canOpenInBrowser(item.name)) {
     window.open(getFileUrlByPath(urlTokenKey.value, item.path), '_blank')
   } else if (canView(item.name)) {
@@ -424,6 +431,12 @@ function viewItem(event: Event, item: IFile) {
     // Open text files in new window with custom viewer
     const fileId = getFileId(urlTokenKey.value, item.path)
     window.open(`/text-file?id=${encodeURIComponent(fileId)}`, '_blank')
+  } else if (canPreviewAsPdf(item.name)) {
+    if (docPreviewAvailable.value) {
+      window.open(getPdfPreviewUrlByPath(urlTokenKey.value, item.path), '_blank')
+    } else {
+      downloadFile(item.path)
+    }
   } else if (canOpenInBrowser(item.name)) {
     window.open(getFileUrlByPath(urlTokenKey.value, item.path), '_blank')
   } else if (canView(item.name)) {

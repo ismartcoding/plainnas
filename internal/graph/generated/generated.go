@@ -48,14 +48,15 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	App struct {
-		AudioCurrent func(childComplexity int) int
-		AudioMode    func(childComplexity int) int
-		Audios       func(childComplexity int) int
-		DataDir      func(childComplexity int) int
-		HTTPPort     func(childComplexity int) int
-		HTTPSPort    func(childComplexity int) int
-		ScanProgress func(childComplexity int) int
-		URLToken     func(childComplexity int) int
+		AudioCurrent        func(childComplexity int) int
+		AudioMode           func(childComplexity int) int
+		Audios              func(childComplexity int) int
+		DataDir             func(childComplexity int) int
+		DocPreviewAvailable func(childComplexity int) int
+		HTTPPort            func(childComplexity int) int
+		HTTPSPort           func(childComplexity int) int
+		ScanProgress        func(childComplexity int) int
+		URLToken            func(childComplexity int) int
 	}
 
 	AppUpdate struct {
@@ -107,6 +108,14 @@ type ComplexityRoot struct {
 		SwapTotalBytes   func(childComplexity int) int
 		SwapUsedBytes    func(childComplexity int) int
 		Uptime           func(childComplexity int) int
+	}
+
+	DlnaRenderer struct {
+		Location     func(childComplexity int) int
+		Manufacturer func(childComplexity int) int
+		ModelName    func(childComplexity int) int
+		Name         func(childComplexity int) int
+		Udn          func(childComplexity int) int
 	}
 
 	Event struct {
@@ -203,6 +212,7 @@ type ComplexityRoot struct {
 		DeleteMediaItems       func(childComplexity int, typeArg model.DataType, query string) int
 		DeletePlaylistAudio    func(childComplexity int, path string) int
 		DeleteTag              func(childComplexity int, id string) int
+		DlnaCast               func(childComplexity int, rendererUdn string, url string, title string, mime string, typeArg model.DataType) int
 		FormatDisk             func(childComplexity int, path string) int
 		Logout                 func(childComplexity int) int
 		MergeChunks            func(childComplexity int, fileID string, totalChunks int, path string, replace bool) int
@@ -233,6 +243,7 @@ type ComplexityRoot struct {
 		UpdateAudioPlayMode    func(childComplexity int, mode model.MediaPlayMode) int
 		UpdateTag              func(childComplexity int, id string, name string) int
 		UpdateTagRelations     func(childComplexity int, typeArg model.DataType, item model.TagRelationStub, addTagIds []string, removeTagIds []string) int
+		WriteTextFile          func(childComplexity int, path string, content string, overwrite bool) int
 	}
 
 	NicInfo struct {
@@ -266,10 +277,12 @@ type ComplexityRoot struct {
 		Audios           func(childComplexity int, offset int, limit int, query string, sortBy model.FileSortBy) int
 		DeviceInfo       func(childComplexity int) int
 		Disks            func(childComplexity int) int
+		DlnaRenderers    func(childComplexity int) int
 		Events           func(childComplexity int, limit int) int
 		FavoriteFolders  func(childComplexity int) int
 		FileInfo         func(childComplexity int, id string, path string, includeDirSize *bool) int
 		Files            func(childComplexity int, offset int, limit int, query string, sortBy model.FileSortBy) int
+		FilesCount       func(childComplexity int, query string) int
 		GetTasks         func(childComplexity int) int
 		ImageCount       func(childComplexity int, query string) int
 		Images           func(childComplexity int, offset int, limit int, query string, sortBy model.FileSortBy) int
@@ -322,6 +335,7 @@ type ComplexityRoot struct {
 	}
 
 	StorageDisk struct {
+		ID        func(childComplexity int) int
 		Model     func(childComplexity int) int
 		Name      func(childComplexity int) int
 		Path      func(childComplexity int) int
@@ -331,6 +345,7 @@ type ComplexityRoot struct {
 
 	StorageMount struct {
 		Alias        func(childComplexity int) int
+		DiskID       func(childComplexity int) int
 		DriveType    func(childComplexity int) int
 		FreeBytes    func(childComplexity int) int
 		FsType       func(childComplexity int) int
@@ -338,7 +353,6 @@ type ComplexityRoot struct {
 		Label        func(childComplexity int) int
 		MountPoint   func(childComplexity int) int
 		Name         func(childComplexity int) int
-		ParentDevice func(childComplexity int) int
 		PartitionNum func(childComplexity int) int
 		Path         func(childComplexity int) int
 		Remote       func(childComplexity int) int
@@ -392,6 +406,7 @@ type MutationResolver interface {
 	RemoveFavoriteFolder(ctx context.Context, rootPath string, relativePath string) (*model.FavoriteFolder, error)
 	SetFavoriteFolderAlias(ctx context.Context, rootPath string, relativePath string, alias string) (bool, error)
 	CreateDir(ctx context.Context, path string) (*model.File, error)
+	WriteTextFile(ctx context.Context, path string, content string, overwrite bool) (*model.File, error)
 	RenameFile(ctx context.Context, path string, name string) (bool, error)
 	CopyFile(ctx context.Context, src string, dst string, overwrite bool) (bool, error)
 	MoveFile(ctx context.Context, src string, dst string, overwrite bool) (bool, error)
@@ -424,6 +439,7 @@ type MutationResolver interface {
 	RemoveFromTags(ctx context.Context, typeArg model.DataType, tagIds []string, query string) (bool, error)
 	SetMountAlias(ctx context.Context, id string, alias string) (bool, error)
 	FormatDisk(ctx context.Context, path string) (bool, error)
+	DlnaCast(ctx context.Context, rendererUdn string, url string, title string, mime string, typeArg model.DataType) (bool, error)
 }
 type QueryResolver interface {
 	App(ctx context.Context) (*model.App, error)
@@ -450,9 +466,11 @@ type QueryResolver interface {
 	PathStats(ctx context.Context, paths []string) ([]*model.PathStatResult, error)
 	FileInfo(ctx context.Context, id string, path string, includeDirSize *bool) (*model.FileInfo, error)
 	Files(ctx context.Context, offset int, limit int, query string, sortBy model.FileSortBy) ([]*model.File, error)
+	FilesCount(ctx context.Context, query string) (int, error)
 	RecentFiles(ctx context.Context) ([]*model.File, error)
 	TrashCount(ctx context.Context) (int, error)
 	UploadedChunks(ctx context.Context, fileID string) ([]int, error)
+	DlnaRenderers(ctx context.Context) ([]*model.DlnaRenderer, error)
 }
 
 type executableSchema struct {
@@ -501,6 +519,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.App.DataDir(childComplexity), true
+
+	case "App.docPreviewAvailable":
+		if e.complexity.App.DocPreviewAvailable == nil {
+			break
+		}
+
+		return e.complexity.App.DocPreviewAvailable(childComplexity), true
 
 	case "App.httpPort":
 		if e.complexity.App.HTTPPort == nil {
@@ -802,6 +827,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DeviceInfo.Uptime(childComplexity), true
+
+	case "DlnaRenderer.location":
+		if e.complexity.DlnaRenderer.Location == nil {
+			break
+		}
+
+		return e.complexity.DlnaRenderer.Location(childComplexity), true
+
+	case "DlnaRenderer.manufacturer":
+		if e.complexity.DlnaRenderer.Manufacturer == nil {
+			break
+		}
+
+		return e.complexity.DlnaRenderer.Manufacturer(childComplexity), true
+
+	case "DlnaRenderer.modelName":
+		if e.complexity.DlnaRenderer.ModelName == nil {
+			break
+		}
+
+		return e.complexity.DlnaRenderer.ModelName(childComplexity), true
+
+	case "DlnaRenderer.name":
+		if e.complexity.DlnaRenderer.Name == nil {
+			break
+		}
+
+		return e.complexity.DlnaRenderer.Name(childComplexity), true
+
+	case "DlnaRenderer.udn":
+		if e.complexity.DlnaRenderer.Udn == nil {
+			break
+		}
+
+		return e.complexity.DlnaRenderer.Udn(childComplexity), true
 
 	case "Event.clientId":
 		if e.complexity.Event.ClientID == nil {
@@ -1309,6 +1369,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.DeleteTag(childComplexity, args["id"].(string)), true
 
+	case "Mutation.dlnaCast":
+		if e.complexity.Mutation.DlnaCast == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_dlnaCast_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DlnaCast(childComplexity, args["rendererUdn"].(string), args["url"].(string), args["title"].(string), args["mime"].(string), args["type"].(model.DataType)), true
+
 	case "Mutation.formatDisk":
 		if e.complexity.Mutation.FormatDisk == nil {
 			break
@@ -1649,6 +1721,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.UpdateTagRelations(childComplexity, args["type"].(model.DataType), args["item"].(model.TagRelationStub), args["addTagIds"].([]string), args["removeTagIds"].([]string)), true
 
+	case "Mutation.writeTextFile":
+		if e.complexity.Mutation.WriteTextFile == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_writeTextFile_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.WriteTextFile(childComplexity, args["path"].(string), args["content"].(string), args["overwrite"].(bool)), true
+
 	case "NicInfo.mac":
 		if e.complexity.NicInfo.Mac == nil {
 			break
@@ -1785,6 +1869,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Disks(childComplexity), true
 
+	case "Query.dlnaRenderers":
+		if e.complexity.Query.DlnaRenderers == nil {
+			break
+		}
+
+		return e.complexity.Query.DlnaRenderers(childComplexity), true
+
 	case "Query.events":
 		if e.complexity.Query.Events == nil {
 			break
@@ -1827,6 +1918,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Files(childComplexity, args["offset"].(int), args["limit"].(int), args["query"].(string), args["sortBy"].(model.FileSortBy)), true
+
+	case "Query.filesCount":
+		if e.complexity.Query.FilesCount == nil {
+			break
+		}
+
+		args, err := ec.field_Query_filesCount_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.FilesCount(childComplexity, args["query"].(string)), true
 
 	case "Query.getTasks":
 		if e.complexity.Query.GetTasks == nil {
@@ -2132,6 +2235,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Session.UpdatedAt(childComplexity), true
 
+	case "StorageDisk.id":
+		if e.complexity.StorageDisk.ID == nil {
+			break
+		}
+
+		return e.complexity.StorageDisk.ID(childComplexity), true
+
 	case "StorageDisk.model":
 		if e.complexity.StorageDisk.Model == nil {
 			break
@@ -2173,6 +2283,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.StorageMount.Alias(childComplexity), true
+
+	case "StorageMount.diskID":
+		if e.complexity.StorageMount.DiskID == nil {
+			break
+		}
+
+		return e.complexity.StorageMount.DiskID(childComplexity), true
 
 	case "StorageMount.driveType":
 		if e.complexity.StorageMount.DriveType == nil {
@@ -2222,13 +2339,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.StorageMount.Name(childComplexity), true
-
-	case "StorageMount.parentDevice":
-		if e.complexity.StorageMount.ParentDevice == nil {
-			break
-		}
-
-		return e.complexity.StorageMount.ParentDevice(childComplexity), true
 
 	case "StorageMount.partitionNum":
 		if e.complexity.StorageMount.PartitionNum == nil {
@@ -2613,6 +2723,7 @@ type Mutation {
   removeFavoriteFolder(rootPath: String!, relativePath: String!): FavoriteFolder!
   setFavoriteFolderAlias(rootPath: String!, relativePath: String!, alias: String!): Boolean!
   createDir(path: String!): File!
+  writeTextFile(path: String!, content: String!, overwrite: Boolean!): File!
   renameFile(path: String!, name: String!): Boolean!
   copyFile(src: String!, dst: String!, overwrite: Boolean!): Boolean!
   moveFile(src: String!, dst: String!, overwrite: Boolean!): Boolean!
@@ -2652,6 +2763,9 @@ type Mutation {
 
   # Storage disk management
   formatDisk(path: String!): Boolean!
+
+  # DLNA casting
+  dlnaCast(rendererUdn: String!, url: String!, title: String!, mime: String!, type: DataType!): Boolean!
 }
 
 type Query {
@@ -2679,9 +2793,21 @@ type Query {
   pathStats(paths: [String!]!): [PathStatResult!]!
   fileInfo(id: ID!, path: String!, includeDirSize: Boolean = false): FileInfo
   files(offset: Int!, limit: Int!, query: String!, sortBy: FileSortBy!): [File!]!
+  filesCount(query: String!): Int!
   recentFiles: [File!]!
   trashCount: Int!
   uploadedChunks(fileId: String!): [Int!]!
+
+  # DLNA casting
+  dlnaRenderers: [DlnaRenderer!]!
+}
+
+type DlnaRenderer {
+  udn: String!
+  name: String!
+  manufacturer: String
+  modelName: String
+  location: String!
 }
 
 type PathStat {
@@ -2718,6 +2844,7 @@ type FavoriteFolder {
 
 type App {
   urlToken: String!
+  docPreviewAvailable: Boolean!
   httpPort: Int!
   httpsPort: Int!
   audios: [PlaylistAudio!]!
@@ -2768,10 +2895,11 @@ type StorageMount {
   alias: String
   remote: Boolean!
   driveType: String
-  parentDevice: String
+  diskID: ID
 }
 
 type StorageDisk {
+  id: ID!
   name: String!
   path: String!
   sizeBytes: Long!
@@ -3468,6 +3596,126 @@ func (ec *executionContext) field_Mutation_deleteTag_argsID(
 	}
 
 	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_dlnaCast_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_dlnaCast_argsRendererUdn(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["rendererUdn"] = arg0
+	arg1, err := ec.field_Mutation_dlnaCast_argsURL(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["url"] = arg1
+	arg2, err := ec.field_Mutation_dlnaCast_argsTitle(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["title"] = arg2
+	arg3, err := ec.field_Mutation_dlnaCast_argsMime(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["mime"] = arg3
+	arg4, err := ec.field_Mutation_dlnaCast_argsType(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["type"] = arg4
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_dlnaCast_argsRendererUdn(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["rendererUdn"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("rendererUdn"))
+	if tmp, ok := rawArgs["rendererUdn"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_dlnaCast_argsURL(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["url"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+	if tmp, ok := rawArgs["url"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_dlnaCast_argsTitle(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["title"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+	if tmp, ok := rawArgs["title"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_dlnaCast_argsMime(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["mime"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("mime"))
+	if tmp, ok := rawArgs["mime"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_dlnaCast_argsType(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.DataType, error) {
+	if _, ok := rawArgs["type"]; !ok {
+		var zeroVal model.DataType
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+	if tmp, ok := rawArgs["type"]; ok {
+		return ec.unmarshalNDataType2ismartcodingᚋplainnasᚋinternalᚋgraphᚋmodelᚐDataType(ctx, tmp)
+	}
+
+	var zeroVal model.DataType
 	return zeroVal, nil
 }
 
@@ -4659,6 +4907,80 @@ func (ec *executionContext) field_Mutation_updateTag_argsName(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_writeTextFile_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_writeTextFile_argsPath(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["path"] = arg0
+	arg1, err := ec.field_Mutation_writeTextFile_argsContent(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["content"] = arg1
+	arg2, err := ec.field_Mutation_writeTextFile_argsOverwrite(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["overwrite"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_writeTextFile_argsPath(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["path"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("path"))
+	if tmp, ok := rawArgs["path"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_writeTextFile_argsContent(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["content"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("content"))
+	if tmp, ok := rawArgs["content"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_writeTextFile_argsOverwrite(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["overwrite"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("overwrite"))
+	if tmp, ok := rawArgs["overwrite"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4911,6 +5233,34 @@ func (ec *executionContext) field_Query_fileInfo_argsIncludeDirSize(
 	}
 
 	var zeroVal *bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_filesCount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_filesCount_argsQuery(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["query"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_filesCount_argsQuery(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["query"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("query"))
+	if tmp, ok := rawArgs["query"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -5560,6 +5910,50 @@ func (ec *executionContext) fieldContext_App_urlToken(_ context.Context, field g
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _App_docPreviewAvailable(ctx context.Context, field graphql.CollectedField, obj *model.App) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_App_docPreviewAvailable(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DocPreviewAvailable, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_App_docPreviewAvailable(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "App",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -7611,6 +8005,220 @@ func (ec *executionContext) _DeviceInfo_model(ctx context.Context, field graphql
 func (ec *executionContext) fieldContext_DeviceInfo_model(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "DeviceInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DlnaRenderer_udn(ctx context.Context, field graphql.CollectedField, obj *model.DlnaRenderer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DlnaRenderer_udn(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Udn, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DlnaRenderer_udn(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DlnaRenderer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DlnaRenderer_name(ctx context.Context, field graphql.CollectedField, obj *model.DlnaRenderer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DlnaRenderer_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DlnaRenderer_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DlnaRenderer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DlnaRenderer_manufacturer(ctx context.Context, field graphql.CollectedField, obj *model.DlnaRenderer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DlnaRenderer_manufacturer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Manufacturer, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DlnaRenderer_manufacturer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DlnaRenderer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DlnaRenderer_modelName(ctx context.Context, field graphql.CollectedField, obj *model.DlnaRenderer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DlnaRenderer_modelName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ModelName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DlnaRenderer_modelName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DlnaRenderer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DlnaRenderer_location(ctx context.Context, field graphql.CollectedField, obj *model.DlnaRenderer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DlnaRenderer_location(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Location, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DlnaRenderer_location(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DlnaRenderer",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -10461,6 +11069,75 @@ func (ec *executionContext) fieldContext_Mutation_createDir(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_writeTextFile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_writeTextFile(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().WriteTextFile(rctx, fc.Args["path"].(string), fc.Args["content"].(string), fc.Args["overwrite"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.File)
+	fc.Result = res
+	return ec.marshalNFile2ᚖismartcodingᚋplainnasᚋinternalᚋgraphᚋmodelᚐFile(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_writeTextFile(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "path":
+				return ec.fieldContext_File_path(ctx, field)
+			case "isDir":
+				return ec.fieldContext_File_isDir(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_File_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_File_updatedAt(ctx, field)
+			case "size":
+				return ec.fieldContext_File_size(ctx, field)
+			case "childCount":
+				return ec.fieldContext_File_childCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type File", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_writeTextFile_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_renameFile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_renameFile(ctx, field)
 	if err != nil {
@@ -12273,6 +12950,61 @@ func (ec *executionContext) fieldContext_Mutation_formatDisk(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_dlnaCast(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_dlnaCast(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DlnaCast(rctx, fc.Args["rendererUdn"].(string), fc.Args["url"].(string), fc.Args["title"].(string), fc.Args["mime"].(string), fc.Args["type"].(model.DataType))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_dlnaCast(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_dlnaCast_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _NicInfo_name(ctx context.Context, field graphql.CollectedField, obj *model.NicInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_NicInfo_name(ctx, field)
 	if err != nil {
@@ -12842,6 +13574,8 @@ func (ec *executionContext) fieldContext_Query_app(_ context.Context, field grap
 			switch field.Name {
 			case "urlToken":
 				return ec.fieldContext_App_urlToken(ctx, field)
+			case "docPreviewAvailable":
+				return ec.fieldContext_App_docPreviewAvailable(ctx, field)
 			case "httpPort":
 				return ec.fieldContext_App_httpPort(ctx, field)
 			case "httpsPort":
@@ -13173,8 +13907,8 @@ func (ec *executionContext) fieldContext_Query_mounts(_ context.Context, field g
 				return ec.fieldContext_StorageMount_remote(ctx, field)
 			case "driveType":
 				return ec.fieldContext_StorageMount_driveType(ctx, field)
-			case "parentDevice":
-				return ec.fieldContext_StorageMount_parentDevice(ctx, field)
+			case "diskID":
+				return ec.fieldContext_StorageMount_diskID(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type StorageMount", field.Name)
 		},
@@ -13221,6 +13955,8 @@ func (ec *executionContext) fieldContext_Query_disks(_ context.Context, field gr
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_StorageDisk_id(ctx, field)
 			case "name":
 				return ec.fieldContext_StorageDisk_name(ctx, field)
 			case "path":
@@ -14309,6 +15045,61 @@ func (ec *executionContext) fieldContext_Query_files(ctx context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_filesCount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_filesCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().FilesCount(rctx, fc.Args["query"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_filesCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_filesCount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_recentFiles(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_recentFiles(ctx, field)
 	if err != nil {
@@ -14462,6 +15253,62 @@ func (ec *executionContext) fieldContext_Query_uploadedChunks(ctx context.Contex
 	if fc.Args, err = ec.field_Query_uploadedChunks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_dlnaRenderers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_dlnaRenderers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().DlnaRenderers(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.DlnaRenderer)
+	fc.Result = res
+	return ec.marshalNDlnaRenderer2ᚕᚖismartcodingᚋplainnasᚋinternalᚋgraphᚋmodelᚐDlnaRendererᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_dlnaRenderers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "udn":
+				return ec.fieldContext_DlnaRenderer_udn(ctx, field)
+			case "name":
+				return ec.fieldContext_DlnaRenderer_name(ctx, field)
+			case "manufacturer":
+				return ec.fieldContext_DlnaRenderer_manufacturer(ctx, field)
+			case "modelName":
+				return ec.fieldContext_DlnaRenderer_modelName(ctx, field)
+			case "location":
+				return ec.fieldContext_DlnaRenderer_location(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DlnaRenderer", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -15487,6 +16334,50 @@ func (ec *executionContext) fieldContext_Session_updatedAt(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _StorageDisk_id(ctx context.Context, field graphql.CollectedField, obj *model.StorageDisk) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StorageDisk_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StorageDisk_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StorageDisk",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _StorageDisk_name(ctx context.Context, field graphql.CollectedField, obj *model.StorageDisk) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_StorageDisk_name(ctx, field)
 	if err != nil {
@@ -16290,8 +17181,8 @@ func (ec *executionContext) fieldContext_StorageMount_driveType(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _StorageMount_parentDevice(ctx context.Context, field graphql.CollectedField, obj *model.StorageMount) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_StorageMount_parentDevice(ctx, field)
+func (ec *executionContext) _StorageMount_diskID(ctx context.Context, field graphql.CollectedField, obj *model.StorageMount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StorageMount_diskID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -16304,7 +17195,7 @@ func (ec *executionContext) _StorageMount_parentDevice(ctx context.Context, fiel
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ParentDevice, nil
+		return obj.DiskID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -16315,17 +17206,17 @@ func (ec *executionContext) _StorageMount_parentDevice(ctx context.Context, fiel
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOID2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_StorageMount_parentDevice(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_StorageMount_diskID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "StorageMount",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type ID does not have child fields")
 		},
 	}
 	return fc, nil
@@ -19340,6 +20231,11 @@ func (ec *executionContext) _App(ctx context.Context, sel ast.SelectionSet, obj 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "docPreviewAvailable":
+			out.Values[i] = ec._App_docPreviewAvailable(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "httpPort":
 			out.Values[i] = ec._App_httpPort(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -19691,6 +20587,59 @@ func (ec *executionContext) _DeviceInfo(ctx context.Context, sel ast.SelectionSe
 			}
 		case "model":
 			out.Values[i] = ec._DeviceInfo_model(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var dlnaRendererImplementors = []string{"DlnaRenderer"}
+
+func (ec *executionContext) _DlnaRenderer(ctx context.Context, sel ast.SelectionSet, obj *model.DlnaRenderer) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, dlnaRendererImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DlnaRenderer")
+		case "udn":
+			out.Values[i] = ec._DlnaRenderer_udn(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._DlnaRenderer_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "manufacturer":
+			out.Values[i] = ec._DlnaRenderer_manufacturer(ctx, field, obj)
+		case "modelName":
+			out.Values[i] = ec._DlnaRenderer_modelName(ctx, field, obj)
+		case "location":
+			out.Values[i] = ec._DlnaRenderer_location(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -20384,6 +21333,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "writeTextFile":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_writeTextFile(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "renameFile":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_renameFile(ctx, field)
@@ -20598,6 +21554,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "formatDisk":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_formatDisk(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "dlnaCast":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_dlnaCast(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -21365,6 +22328,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "filesCount":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_filesCount(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "recentFiles":
 			field := field
 
@@ -21419,6 +22404,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_uploadedChunks(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "dlnaRenderers":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_dlnaRenderers(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -21709,6 +22716,11 @@ func (ec *executionContext) _StorageDisk(ctx context.Context, sel ast.SelectionS
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("StorageDisk")
+		case "id":
+			out.Values[i] = ec._StorageDisk_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "name":
 			out.Values[i] = ec._StorageDisk_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -21805,8 +22817,8 @@ func (ec *executionContext) _StorageMount(ctx context.Context, sel ast.Selection
 			}
 		case "driveType":
 			out.Values[i] = ec._StorageMount_driveType(ctx, field, obj)
-		case "parentDevice":
-			out.Values[i] = ec._StorageMount_parentDevice(ctx, field, obj)
+		case "diskID":
+			out.Values[i] = ec._StorageMount_diskID(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -22503,6 +23515,60 @@ func (ec *executionContext) marshalNDeviceInfo2ᚖismartcodingᚋplainnasᚋinte
 		return graphql.Null
 	}
 	return ec._DeviceInfo(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNDlnaRenderer2ᚕᚖismartcodingᚋplainnasᚋinternalᚋgraphᚋmodelᚐDlnaRendererᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.DlnaRenderer) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNDlnaRenderer2ᚖismartcodingᚋplainnasᚋinternalᚋgraphᚋmodelᚐDlnaRenderer(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNDlnaRenderer2ᚖismartcodingᚋplainnasᚋinternalᚋgraphᚋmodelᚐDlnaRenderer(ctx context.Context, sel ast.SelectionSet, v *model.DlnaRenderer) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DlnaRenderer(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNEvent2ᚕᚖismartcodingᚋplainnasᚋinternalᚋgraphᚋmodelᚐEventᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Event) graphql.Marshaler {
@@ -23989,6 +25055,22 @@ func (ec *executionContext) marshalOGeoLocation2ᚖismartcodingᚋplainnasᚋint
 		return graphql.Null
 	}
 	return ec._GeoLocation(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v any) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalID(*v)
+	return res
 }
 
 func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v any) (*int, error) {

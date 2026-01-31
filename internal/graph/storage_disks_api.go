@@ -67,6 +67,7 @@ func ListStorageDisks() ([]*model.StorageDisk, error) {
 		}
 
 		items = append(items, &model.StorageDisk{
+			ID:        diskIDFromName(name),
 			Name:      name,
 			Path:      path,
 			SizeBytes: size,

@@ -42,7 +42,8 @@ func Run(ctx context.Context) {
 		tls.MakeCert(consts.ETC_TLS_SERVER_PEM, consts.ETC_TLS_SERVER_KEY)
 	}
 
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
 	r.Use(gzipMiddleware())
 	r.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
@@ -63,7 +64,10 @@ func Run(ctx context.Context) {
 	r.POST("/upload", uploadHandler())
 	r.POST("/upload_chunk", uploadChunkHandler())
 	r.GET("/ws", wsHandler())
+	r.GET("/media/:name", mediaHandler())
 	r.GET("/fs", fsHandler())
+	r.GET("/zip/dir", zipDirHandler())
+	r.GET("/zip/files", zipFilesHandler())
 	// Serve embedded frontend assets from web/dist
 	distFS, err := fs.Sub(webFS, "dist")
 	if err != nil {

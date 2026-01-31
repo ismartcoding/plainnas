@@ -13,10 +13,16 @@ PlainNAS provides a web interface for file browsing and media management, plus b
 
 - Web UI (served by the backend)
 - File browsing and basic file operations
+- Read-only preview for Office docs (`.doc`/`.docx`/`.xls`/`.xlsx`/`.ppt`/`.pptx`) served as PDF (optional; requires LibreOffice)
 - Media scan/index + search
 - Thumbnails (photo/video)
 - LAN discovery via `.local` (Avahi)
 - Optional SMB/Samba sharing
+- DLNA casting (TV cast)
+
+Docs:
+
+- [docs/dlna.md](docs/dlna.md)
 
 ## Why PlainNAS (vs image-based NAS OS)
 
@@ -33,6 +39,19 @@ Many NAS products expect you to flash a vendor image to a device/disk/USB drive 
 | App store / plugins | Intentionally minimal (no plugin platform) | Often a major focus (containers/apps/plugins) |
 
 If you want “no flashing images”, “no platform lock-in”, and a clean web UI that works out of the box, PlainNAS is a good fit.
+
+## PlainNAS vs other projects
+
+PlainNAS prioritizes performance efficiency, low resource consumption, and secure data transmission.
+
+| Project | What it is (stack / architecture) | Resource profile (CPU / RAM) | Security (API/data transport) |
+| --- | --- | --- | --- |
+| **PlainNAS** | General-purpose NAS • Go + Pebble + Vue 3 • single-process service | **Low**: single Go process; memory can stay in tens of MB; CPU mainly driven by file I/O | **High**: LAN API traffic secured with TLS + XChaCha20-Poly1305; not plaintext |
+| **Immich** | Photo/video management • Node (NestJS) + Postgres + Redis + ML services • multi-service | **High**: many always-on processes; often hundreds of MB idle; indexing/AI can saturate CPU | **Medium**: often HTTP on LAN or reverse-proxy TLS; internal APIs can be plaintext |
+| **PhotoPrism** | Photo management • Go + TensorFlow + MariaDB • multi-service | **Med–High**: DB + AI models; CPU/RAM rise significantly during indexing | **Medium**: usually plaintext HTTP on LAN; TLS via external reverse proxy |
+| **LibrePhotos** | Photo management • Python + Django + DB + AI • multi-service | **High**: Python runtime + model loading; higher memory footprint; CPU-heavy scanning | **Medium**: commonly plaintext HTTP locally; TLS depends on deployment |
+| **Lychee** | Photo gallery • PHP + MySQL/SQLite • web + DB | **Medium**: PHP-FPM + DB are long-running; higher baseline than single Go service | **Low–Medium**: plaintext HTTP by default; HTTPS via web server config |
+| **PiGallery2** | Gallery browser • Node.js • single service (heavier runtime) | **Medium**: higher baseline memory than Go; thumbnail generation spikes CPU | **Low–Medium**: plaintext HTTP by default; TLS via external proxy |
 
 ## Quick start
 
@@ -64,6 +83,12 @@ go build
 sudo ./plainnas install
 ```
 
+Optional (enables `.doc` / `.docx` PDF preview):
+
+```bash
+sudo ./plainnas install --with-libreoffice
+```
+
 This will best-effort install required packages (libvips, ffmpeg, samba, avahi) and write:
 
 - `/etc/plainnas/config.toml`
@@ -89,6 +114,18 @@ If you need to change it later, run:
 
 ```bash
 sudo plainnas passwd
+```
+
+To uninstall:
+
+```bash
+sudo plainnas uninstall
+```
+
+To keep config and/or runtime data:
+
+```bash
+sudo plainnas uninstall --keep-config --keep-data
 ```
 
 </details>
@@ -158,6 +195,7 @@ go generate ./internal/graph
 - File conflicts (copy/paste & upload): [docs/file-conflicts.md](docs/file-conflicts.md)
 - Tags: [docs/tags.md](docs/tags.md)
 - Thumbnails: [docs/thumbnails.md](docs/thumbnails.md)
+- Performance benchmarks: [docs/performance-benchmarks.md](docs/performance-benchmarks.md)
 - Media items: [docs/media-items.md](docs/media-items.md)
 - Events (audit log): [docs/events.md](docs/events.md)
 - LAN share (SMB/Samba): [docs/samba.md](docs/samba.md)
@@ -166,11 +204,12 @@ go generate ./internal/graph
 
 Tested setup:
 
-- NanoPi R4S (4 GB RAM)
+- NanoPi R4S (4 GB RAM) or NUC-C3 L4 (J3160 + 8 GB RAM)
 - USB Type-C to SATA 3.0 controller (5-port)
 - 2 × SATA hard drives
 - OS: [Armbian for NanoPi R4S](https://www.armbian.com/nanopi-r4s/)
 
-<img src="./images/r4s.png" width="240">
-<img src="./images/usb-controller.png" width="180">
+<img src="./images/r4s.png" width="200">
+<img src="./images/nuc-c3-l4.png" width="240">
+<img src="./images/usb-controller.png" width="200">
 <img src="./images/disk.png" width="100">

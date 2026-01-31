@@ -27,6 +27,7 @@ export const playlistAudioFragment = gql`
 export const appFragment = gql`
   fragment AppFragment on App {
     urlToken
+    docPreviewAvailable
     httpPort
     httpsPort
     audios {

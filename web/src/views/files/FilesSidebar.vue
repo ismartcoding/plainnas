@@ -10,9 +10,6 @@ v-for="item in quickLinks" :key="item.fullPath" :class="{ active: item.isChecked
             <i-lucide:trash v-else />
           </span>
           <span class="title">{{ item.title }}</span>
-          <v-icon-button v-if="item.type === 'TRASH'" v-tooltip="$t('trash_tips')" class="btn-help sm">
-            <i-material-symbols:help-outline-rounded />
-          </v-icon-button>
           <span v-if="item.type === 'RECENTS' && recentCount >= 0" class="count">{{ recentCount.toLocaleString()
           }}</span>
           <span v-else-if="item.type === 'TRASH' && trashCount >= 0" class="count">{{ trashCount.toLocaleString()

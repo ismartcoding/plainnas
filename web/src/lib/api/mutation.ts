@@ -98,6 +98,15 @@ export const createDirGQL = gql`
   ${fileFragment}
 `
 
+export const writeTextFileGQL = gql`
+  mutation writeTextFile($path: String!, $content: String!, $overwrite: Boolean!) {
+    writeTextFile(path: $path, content: $content, overwrite: $overwrite) {
+      ...FileFragment
+    }
+  }
+  ${fileFragment}
+`
+
 export const renameFileGQL = gql`
   mutation renameFile($path: String!, $name: String!) {
     renameFile(path: $path, name: $name)
@@ -191,6 +200,12 @@ export const restoreFilesGQL = gql`
 export const formatDiskGQL = gql`
   mutation formatDisk($path: String!) {
     formatDisk(path: $path)
+  }
+`
+
+export const dlnaCastGQL = gql`
+  mutation dlnaCast($rendererUdn: String!, $url: String!, $title: String!, $mime: String!, $type: DataType!) {
+    dlnaCast(rendererUdn: $rendererUdn, url: $url, title: $title, mime: $mime, type: $type)
   }
 `
 

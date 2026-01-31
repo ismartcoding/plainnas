@@ -9,6 +9,7 @@ import type {
 } from '@/lib/interfaces'
 import type { IUploadItem } from '@/stores/temp'
 import mitt, { type Emitter } from 'mitt'
+import type { IDlnaRenderer } from '@/lib/interfaces'
 
 type Events = {
   upload_task_done: IUploadItem
@@ -20,6 +21,8 @@ type Events = {
   pause_audio: undefined
   media_scan_progress: any
   file_task_progress: any
+  dlna_renderer_found: IDlnaRenderer
+  dlna_discovery_done: any
   item_tags_updated: IItemTagsUpdatedEvent
   items_tags_updated: IItemsTagsUpdatedEvent
   refetch_tags: string

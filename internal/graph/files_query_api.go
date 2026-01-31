@@ -30,6 +30,11 @@ func files(offset int, limit int, query string, sortBy model.FileSortBy) ([]*mod
 	}
 
 	// No filters - just list files
+	if sortBy == model.FileSortByNameAsc || sortBy == model.FileSortByNameDesc {
+		items := helpers.ListFilesPaged(base, q.ShowHidden, offset, limit, sortBy)
+		return items, nil
+	}
+
 	items := helpers.ListFiles(base, q.ShowHidden)
 	helpers.SortFiles(items, sortBy)
 	if offset > 0 && offset < len(items) {

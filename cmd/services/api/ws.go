@@ -92,6 +92,30 @@ func wsHandler() gin.HandlerFunc {
 			}
 			_ = eventbus.GetDefault().Subscribe(consts.EVENT_FILE_TASK_PROGRESS, fileTaskHandler)
 			defer func() { _ = eventbus.GetDefault().Unsubscribe(consts.EVENT_FILE_TASK_PROGRESS, fileTaskHandler) }()
+
+			dlnaFoundHandler := func(eventCID string, payload map[string]any) {
+				if eventCID != id {
+					return
+				}
+				b, _ := json.Marshal(payload)
+				if enc := strutils.ChaCha20Encrypt(key, b); enc != nil {
+					_ = cconn.WriteMessage(websocket.BinaryMessage, append(int32ToBytes(7), enc...))
+				}
+			}
+			_ = eventbus.GetDefault().Subscribe(consts.EVENT_DLNA_RENDERER_FOUND, dlnaFoundHandler)
+			defer func() { _ = eventbus.GetDefault().Unsubscribe(consts.EVENT_DLNA_RENDERER_FOUND, dlnaFoundHandler) }()
+
+			dlnaDoneHandler := func(eventCID string, payload map[string]any) {
+				if eventCID != id {
+					return
+				}
+				b, _ := json.Marshal(payload)
+				if enc := strutils.ChaCha20Encrypt(key, b); enc != nil {
+					_ = cconn.WriteMessage(websocket.BinaryMessage, append(int32ToBytes(8), enc...))
+				}
+			}
+			_ = eventbus.GetDefault().Subscribe(consts.EVENT_DLNA_DISCOVERY_DONE, dlnaDoneHandler)
+			defer func() { _ = eventbus.GetDefault().Unsubscribe(consts.EVENT_DLNA_DISCOVERY_DONE, dlnaDoneHandler) }()
 			for {
 				if _, _, err := cconn.ReadMessage(); err != nil {
 					return

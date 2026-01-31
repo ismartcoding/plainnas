@@ -97,6 +97,7 @@ type Mutation {
   removeFavoriteFolder(rootPath: String!, relativePath: String!): FavoriteFolder!
   setFavoriteFolderAlias(rootPath: String!, relativePath: String!, alias: String!): Boolean!
   createDir(path: String!): File!
+  writeTextFile(path: String!, content: String!, overwrite: Boolean!): File!
   renameFile(path: String!, name: String!): Boolean!
   copyFile(src: String!, dst: String!, overwrite: Boolean!): Boolean!
   moveFile(src: String!, dst: String!, overwrite: Boolean!): Boolean!
@@ -136,6 +137,9 @@ type Mutation {
 
   # Storage disk management
   formatDisk(path: String!): Boolean!
+
+  # DLNA casting
+  dlnaCast(rendererUdn: String!, url: String!, title: String!, mime: String!, type: DataType!): Boolean!
 }
 
 type Query {
@@ -163,9 +167,21 @@ type Query {
   pathStats(paths: [String!]!): [PathStatResult!]!
   fileInfo(id: ID!, path: String!, includeDirSize: Boolean = false): FileInfo
   files(offset: Int!, limit: Int!, query: String!, sortBy: FileSortBy!): [File!]!
+  filesCount(query: String!): Int!
   recentFiles: [File!]!
   trashCount: Int!
   uploadedChunks(fileId: String!): [Int!]!
+
+  # DLNA casting
+  dlnaRenderers: [DlnaRenderer!]!
+}
+
+type DlnaRenderer {
+  udn: String!
+  name: String!
+  manufacturer: String
+  modelName: String
+  location: String!
 }
 
 type PathStat {
@@ -202,6 +218,7 @@ type FavoriteFolder {
 
 type App {
   urlToken: String!
+  docPreviewAvailable: Boolean!
   httpPort: Int!
   httpsPort: Int!
   audios: [PlaylistAudio!]!
@@ -252,10 +269,11 @@ type StorageMount {
   alias: String
   remote: Boolean!
   driveType: String
-  parentDevice: String
+  diskID: ID
 }
 
 type StorageDisk {
+  id: ID!
   name: String!
   path: String!
   sizeBytes: Long!

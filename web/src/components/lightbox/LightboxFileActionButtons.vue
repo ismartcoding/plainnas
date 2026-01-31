@@ -20,6 +20,10 @@
         {{ $t('rename') }}
       </v-outlined-button>
     </template>
+    <v-outlined-button v-if="!isTrashed && canCast" class="cast-btn" @click.stop="castItem">
+      <i-material-symbols:airplay-outline-rounded />
+      {{ $t('cast') }}
+    </v-outlined-button>
     <v-outlined-button class="download-btn" @click.stop="handleDownload">
       <i-material-symbols:download-rounded />
       {{ $t('download') }}
@@ -31,6 +35,7 @@
 import { onMounted, onUnmounted, reactive, computed } from 'vue'
 import { getFileName } from '@/lib/api/file'
 import { DataType } from '@/lib/data'
+import { guessDlnaMimeByName, openDlnaCastModal } from '@/lib/dlna'
 import { initMutation, trashFilesGQL, restoreFilesGQL } from '@/lib/api/mutation'
 import { useMediaRestore, useMediaTrash, useFileTrashState } from '@/hooks/media-trash'
 import emitter from '@/plugins/eventbus'
@@ -56,6 +61,11 @@ const isMediaItem = computed(() => {
   return Boolean(props.current?.data?.id && props.current?.type)
 })
 
+const canCast = computed(() => {
+  const t = props.current?.type as DataType | undefined
+  return t === DataType.AUDIO || t === DataType.VIDEO || t === DataType.IMAGE
+})
+
 const trashKey = computed(() => {
   if (isMediaItem.value) return `ids:${props.current?.data?.id}`
   return props.current?.path || ''
@@ -65,6 +75,19 @@ function handleDownload() {
   if (props.current?.path) {
     props.downloadFile(props.current.path, getFileName(props.current.path).replace(' ', '-'))
   }
+}
+
+function castItem() {
+  const c = props.current
+  if (!c?.src) return
+  const t = c.type as DataType | undefined
+  if (!t) return
+  openDlnaCastModal({
+    url: c.src,
+    title: c.name,
+    mime: guessDlnaMimeByName(c.name, t),
+    type: t,
+  })
 }
 
 const { trash, trashLoading } = useMediaTrash()
@@ -177,5 +200,9 @@ onUnmounted(() => {
   &:first-child {
     grid-column: 1 / span 2;
   }
+}
+
+.cast-btn {
+  grid-column: 1 / span 2;
 }
 </style>

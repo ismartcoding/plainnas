@@ -67,7 +67,31 @@ export const useVolumes = () => {
     handle: (data: { mounts: IStorageMount[] }, error: string) => {
       if (!error) {
         const mountedOnly = (data.mounts ?? []).filter((m) => !String(m?.path ?? '').trim())
-        volumes.value = sortStorageVolumesByTitle(mountedOnly, t)
+
+        const userVisible = mountedOnly.filter((m) => {
+          const mp = String(m?.mountPoint ?? '').trim()
+          const fs = String(m?.fsType ?? '').trim().toLowerCase()
+          const total = Number(m?.totalBytes ?? 0)
+          const label = String(m?.label ?? '').trim()
+          const alias = String(m?.alias ?? '').trim()
+          const uuid = String(m?.uuid ?? '').trim()
+          const driveType = String(m?.driveType ?? '').trim().toLowerCase()
+          const name = String(m?.name ?? '').trim()
+
+          // Hide boot/EFI mounts and similar system paths.
+          if (mp === '/boot' || mp === '/boot/efi' || mp === '/efi' || mp === '/boot/firmware') return false
+
+          // Hide typical EFI partitions (vfat + very small).
+          if (fs === 'vfat' && total > 0 && total < 2 * 1000 * 1000 * 1000 && !alias && !label) return false
+
+          // Hide PlainNAS auto-mount placeholders like "usb1"/"usb2" unless the user named them.
+          // This keeps the sidebar focused on human-meaningful storage (e.g. "Primary", "Backup").
+          if (/^\/mnt\/usb\d+$/.test(mp) && /^usb\d+$/i.test(name) && !alias && !label) return false
+
+          return true
+        })
+
+        volumes.value = sortStorageVolumesByTitle(userVisible, t)
       }
     },
     document: mountsGQL,
