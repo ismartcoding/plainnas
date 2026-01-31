@@ -327,7 +327,7 @@ export default {
   efi_partition: 'EFI பகிர்வு',
   root_partition: 'சிஸ்டம் பகிர்வு',
   partition_x: 'பகிர்வு {n}',
-  partition_count_x: '{n} பகிர்வு(கள்) உள்ளது',
+  volume_count_x: '{n} வால்யூம்(கள்) உள்ளது',
   unpartitioned_disk: 'இன்னும் அமைக்கப்படவில்லை',
   whole_disk_volume: 'ஒரே வால்யூமாகப் பயன்படுத்தப்படுகிறது',
   show_technical_details: 'தொழில்நுட்ப விவரங்களைக் காட்டு',

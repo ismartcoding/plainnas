@@ -56,7 +56,7 @@
                 <div class="browser-volumes dm-volumes">
                   <div class="volumes">
                     <VolumeCard v-for="v in diskVolumes(disk)" :key="v.id" :data="v"
-                      :title="getStorageVolumeTitle(v, t)" :drive-type="v.driveType"
+                      :title="getStorageVolumeTitle(v, t)" :drive-type="String(v.driveType || '').trim()"
                       :used-percent="volumeUsedPercent(v)" :count="volumeCount(v)" :show-progress="true" />
                   </div>
                 </div>
@@ -208,9 +208,7 @@ function isSystemDisk(d: IStorageDisk) {
   const rootVol = (mounts.value || []).find((v) => !String(v?.path ?? '').trim() && String(v.mountPoint || '').trim() === '/')
   if (!rootVol) return false
 
-  const rootDiskID = String(rootVol.diskID || '').trim()
-  if (!rootDiskID) return false
-  return rootDiskID === String(d.id || '').trim()
+  return String(rootVol.diskID || '').trim() === String(d.id || '').trim()
 }
 
 function canFormatDisk(d: IStorageDisk) {

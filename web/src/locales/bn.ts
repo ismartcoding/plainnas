@@ -327,7 +327,7 @@ export default {
   efi_partition: 'EFI পার্টিশন',
   root_partition: 'সিস্টেম পার্টিশন',
   partition_x: 'পার্টিশন {n}',
-  partition_count_x: 'মোট {n}টি পার্টিশন',
+  volume_count_x: 'মোট {n}টি ভলিউম',
   unpartitioned_disk: 'এখনও সেট আপ করা হয়নি',
   whole_disk_volume: 'একটি একক ভলিউম হিসেবে ব্যবহৃত',
   show_technical_details: 'প্রযুক্তিগত বিস্তারিত দেখান',

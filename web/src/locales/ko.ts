@@ -420,7 +420,7 @@ export default {
   efi_partition: 'EFI 파티션',
   root_partition: '시스템 파티션',
   partition_x: '파티션 {n}',
-  partition_count_x: '{n}개의 파티션',
+  volume_count_x: '{n}개의 볼륨',
   unpartitioned_disk: '아직 설정되지 않음',
   whole_disk_volume: '단일 볼륨으로 사용',
   show_technical_details: '기술 세부정보 보기',

@@ -329,7 +329,7 @@ export default {
   efi_partition: 'EFI 分割區',
   root_partition: '系統分割區',
   partition_x: '分割區 {n}',
-  partition_count_x: '共有 {n} 個分割區',
+  volume_count_x: '有 {n} 個磁碟區',
   unpartitioned_disk: '尚未設定',
   whole_disk_volume: '作為單一磁碟區使用',
   show_technical_details: '顯示技術細節',

@@ -330,7 +330,7 @@ export default {
   efi_partition: 'EFI 分区',
   root_partition: '系统分区',
   partition_x: '分区 {n}',
-  partition_count_x: '有 {n} 个分区',
+  volume_count_x: '有 {n} 个卷',
   unpartitioned_disk: '尚未设置',
   whole_disk_volume: '作为单个卷使用',
   show_technical_details: '显示技术细节',

@@ -420,7 +420,7 @@ export default {
   efi_partition: 'Phân vùng EFI',
   root_partition: 'Phân vùng hệ thống',
   partition_x: 'Phân vùng {n}',
-  partition_count_x: '{n} phân vùng',
+  volume_count_x: '{n} ổ đĩa',
   unpartitioned_disk: 'Chưa thiết lập',
   whole_disk_volume: 'Dùng như một ổ duy nhất',
   show_technical_details: 'Hiện chi tiết kỹ thuật',

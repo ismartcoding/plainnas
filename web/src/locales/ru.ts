@@ -420,7 +420,7 @@ export default {
   efi_partition: 'EFI-раздел',
   root_partition: 'Системный раздел',
   partition_x: 'Раздел {n}',
-  partition_count_x: 'Всего разделов: {n}',
+  volume_count_x: 'Всего томов: {n}',
   unpartitioned_disk: 'Не настроен',
   whole_disk_volume: 'Использовать как единый том',
   show_technical_details: 'Показать технические детали',

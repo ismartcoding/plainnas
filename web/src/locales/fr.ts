@@ -420,7 +420,7 @@ export default {
   efi_partition: 'Partition EFI',
   root_partition: 'Partition système',
   partition_x: 'Partition {n}',
-  partition_count_x: '{n} partition(s)',
+  volume_count_x: '{n} volume(s)',
   unpartitioned_disk: 'Non configuré',
   whole_disk_volume: 'Utilisé comme volume unique',
   show_technical_details: 'Afficher les détails techniques',

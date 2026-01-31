@@ -32,10 +32,60 @@ func readSysRotational(devName string) (bool, bool) {
 	return s == "1", true
 }
 
+func readSysRemovable(devName string) (bool, bool) {
+	data, err := os.ReadFile("/sys/class/block/" + devName + "/removable")
+	if err != nil {
+		return false, false
+	}
+	s := strings.TrimSpace(string(data))
+	return s == "1", true
+}
+
+func sysDevicePathContains(devName string, needle string) bool {
+	devName = strings.TrimSpace(devName)
+	if devName == "" {
+		return false
+	}
+	// /sys/class/block/<dev>/device is a symlink into the bus topology (usb, pci, mmc, ...)
+	resolved, err := filepath.EvalSymlinks("/sys/class/block/" + devName + "/device")
+	if err != nil || strings.TrimSpace(resolved) == "" {
+		return false
+	}
+	return strings.Contains(resolved, needle)
+}
+
 func baseBlockDeviceName(name string) string {
-	if strings.HasPrefix(name, "nvme") || strings.HasPrefix(name, "mmcblk") || strings.HasPrefix(name, "md") {
+	// Keep whole-disk names for these Linux devices (they naturally contain digits).
+	// Examples: mmcblk1, md0, nvme0n1
+	if strings.HasPrefix(name, "mmcblk") {
+		// mmcblk<disk> (disk) or mmcblk<disk>p<part> (partition)
 		if i := strings.LastIndex(name, "p"); i > 0 && allDigits(name[i+1:]) {
 			return name[:i]
+		}
+		if allDigits(strings.TrimPrefix(name, "mmcblk")) {
+			return name
+		}
+	}
+	if strings.HasPrefix(name, "md") {
+		if i := strings.LastIndex(name, "p"); i > 0 && allDigits(name[i+1:]) {
+			return name[:i]
+		}
+		if allDigits(strings.TrimPrefix(name, "md")) {
+			return name
+		}
+	}
+	if strings.HasPrefix(name, "nvme") {
+		// nvme<ctrl>n<ns> (disk) or nvme<ctrl>n<ns>p<part> (partition)
+		if i := strings.LastIndex(name, "p"); i > 0 && allDigits(name[i+1:]) {
+			return name[:i]
+		}
+		// If it has an 'n' suffix like nvme0n1, keep it intact.
+		if i := strings.LastIndex(name, "n"); i > 0 {
+			left := strings.TrimPrefix(name[:i], "nvme")
+			right := name[i+1:]
+			if allDigits(left) && allDigits(right) {
+				return name
+			}
 		}
 	}
 	j := len(name) - 1
@@ -65,7 +115,7 @@ func allDigits(s string) bool {
 }
 
 // getDriveType determines the high-level drive technology for the given source.
-// Returns one of: "Remote", "HDD", "SSD", or "Unknown".
+// Returns one of: "Remote", "HDD", "SSD", "USB", or "Unknown".
 func getDriveType(src string, isRemote bool) string {
 	if isRemote {
 		return "Remote"
@@ -113,7 +163,29 @@ func getDriveType(src string, isRemote bool) string {
 		return "Unknown"
 	}
 
-	// Regular block or partition device
+	// Regular block or partition device.
+	// Prefer parent device when name refers to a partition.
+	parent := baseBlockDeviceName(name)
+	if parent == "" {
+		parent = name
+	}
+
+	// If this is a removable USB mass-storage device, label as USB.
+	// This avoids showing "HDD" for thumb drives where rotational reporting is unreliable.
+	if sysDevicePathContains(parent, "/usb") {
+		if rm, ok := readSysRemovable(parent); ok && rm {
+			return "USB"
+		}
+	}
+
+	if rot, ok := readSysRotational(parent); ok {
+		if rot {
+			return "HDD"
+		}
+		return "SSD"
+	}
+
+	// Try the leaf node as fallback.
 	if rot, ok := readSysRotational(name); ok {
 		if rot {
 			return "HDD"
@@ -121,8 +193,7 @@ func getDriveType(src string, isRemote bool) string {
 		return "SSD"
 	}
 
-	// Try parent device when name refers to a partition
-	parent := baseBlockDeviceName(name)
+	// Try parent device when name refers to a partition (already computed).
 	if parent != name {
 		if rot, ok := readSysRotational(parent); ok {
 			if rot {

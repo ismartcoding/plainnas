@@ -420,7 +420,7 @@ export default {
   efi_partition: 'EFIパーティション',
   root_partition: 'システムパーティション',
   partition_x: 'パーティション {n}',
-  partition_count_x: '{n}個のパーティション',
+  volume_count_x: '{n}個のボリューム',
   unpartitioned_disk: '未設定',
   whole_disk_volume: '単一ボリュームとして使用',
   show_technical_details: '技術詳細を表示',

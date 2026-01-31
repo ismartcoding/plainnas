@@ -2,8 +2,7 @@
   <left-sidebar class="files-sidebar">
     <template #body>
       <ul class="nav">
-        <li
-v-for="item in quickLinks" :key="item.fullPath" :class="{ active: item.isChecked }"
+        <li v-for="item in quickLinks" :key="item.fullPath" :class="{ active: item.isChecked }"
           @click.prevent="openLink(item)">
           <span class="icon" aria-hidden="true">
             <i-lucide:history v-if="item.type === 'RECENTS'" />
@@ -24,13 +23,11 @@ v-for="item in quickLinks" :key="item.fullPath" :class="{ active: item.isChecked
         </v-icon-button>
       </div>
       <div class="volumes">
-        <VolumeCard
-v-for="item in volumeLinks" :key="item.fullPath" :title="item.title" :drive-type="item.driveType"
+        <VolumeCard v-for="item in volumeLinks" :key="item.fullPath" :title="item.title" :drive-type="item.driveType"
           :used-percent="item.usedPercent || 0" :count="item.count || ''" :data="item"
           :percent-class="percentClass(item.usedPercent)" :active="item.isChecked" @click="openLink(item)">
           <template #actions>
-            <v-icon-button
-:id="'volume-' + item.id" v-tooltip="$t('actions')" class="sm"
+            <v-icon-button :id="'volume-' + item.id" v-tooltip="$t('actions')" class="sm"
               @click.prevent.stop="showVolumeMenu(item)">
               <i-material-symbols:more-vert />
             </v-icon-button>
@@ -41,12 +38,10 @@ v-for="item in volumeLinks" :key="item.fullPath" :title="item.title" :drive-type
       <template v-if="favoriteLinks.length">
         <div class="section-title">{{ $t('favorites') }}</div>
         <ul class="nav">
-          <li
-v-for="item in favoriteLinks" :key="item.fullPath" :class="{ active: item.isChecked }"
+          <li v-for="item in favoriteLinks" :key="item.fullPath" :class="{ active: item.isChecked }"
             @click.prevent="openLink(item)">
             <span class="title">{{ item.title }}</span>
-            <v-icon-button
-:id="'favorite-' + item.fullPath" v-tooltip="$t('actions')" class="sm"
+            <v-icon-button :id="'favorite-' + item.fullPath" v-tooltip="$t('actions')" class="sm"
               @click.prevent.stop="showFavoriteMenu(item)">
               <i-material-symbols:more-vert />
             </v-icon-button>

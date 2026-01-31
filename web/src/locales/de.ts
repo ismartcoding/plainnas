@@ -327,7 +327,7 @@ export default {
   efi_partition: 'EFI-Partition',
   root_partition: 'Systempartition',
   partition_x: 'Partition {n}',
-  partition_count_x: 'Hat {n} Partition(en)',
+  volume_count_x: 'Hat {n} Volume(s)',
   unpartitioned_disk: 'Noch nicht eingerichtet',
   whole_disk_volume: 'Als einzelnes Volume verwendet',
   show_technical_details: 'Technische Details anzeigen',

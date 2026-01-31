@@ -420,7 +420,7 @@ export default {
   efi_partition: 'EFI bölümü',
   root_partition: 'Sistem bölümü',
   partition_x: 'Bölüm {n}',
-  partition_count_x: '{n} bölüm',
+  volume_count_x: '{n} birim',
   unpartitioned_disk: 'Henüz ayarlanmadı',
   whole_disk_volume: 'Tek birim olarak kullan',
   show_technical_details: 'Teknik ayrıntıları göster',
