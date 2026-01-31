@@ -82,6 +82,8 @@ import { computed, ref, reactive, watch, onMounted, onBeforeUnmount, inject } fr
 
 import { on, off, isArray, preventDefault } from './utils/index'
 import { useImage, useMouse, useTouch } from './utils/hooks'
+import { createAroundPreloader } from './utils/preload'
+import { useLightboxFileActions } from './utils/file_actions'
 import type { ISource, IImgWrapperState, IndexChangeActions } from './types'
 import { isVideo, isImage, isAudio, isSvg } from '@/lib/file'
 import { getFileUrlByPath } from '@/lib/api/file'
@@ -94,13 +96,8 @@ import { useI18n } from 'vue-i18n'
 import UpdateTagRelationsModal from '@/components/UpdateTagRelationsModal.vue'
 import type { IItemTagsUpdatedEvent, IFileDeletedEvent, IFileRenamedEvent, ITag, IMediaItemsActionedEvent } from '@/lib/interfaces'
 import emitter from '@/plugins/eventbus'
-import { useDownload, useRename } from '@/hooks/files'
 import { getFileName } from '@/lib/api/file'
-import { useDeleteItems } from '@/hooks/media'
-import { DataType } from '@/lib/data'
 import { remove } from 'lodash-es'
-import DeleteFileConfirm from '@/components/DeleteFileConfirm.vue'
-import EditValueModal from '@/components/EditValueModal.vue'
 
 const props = defineProps({
   loop: {
@@ -135,12 +132,6 @@ const video = ref<HTMLVideoElement>()
 const { imgRef, imgState, setImgSize } = useImage()
 const imgIndex = ref(0)
 const { lightboxInfoVisible } = storeToRefs(useMainStore())
-const { downloadFile } = useDownload(urlTokenKey)
-const { deleteItem } = useDeleteItems()
-const { renameItem, renameDone, renameMutation, renameVariables } = useRename(() => {
-  // Refresh file info after rename completion
-  refetchInfo()
-})
 
 const imgWrapperState = reactive<IImgWrapperState>({
   scale: 1,
@@ -176,69 +167,6 @@ const currCursor = () => {
 
 const fileInfo = ref<any>(null)
 
-function deleteFile() {
-  const mediaTypes = [DataType.VIDEO, DataType.AUDIO, DataType.IMAGE]
-  const type = current.value?.type
-  const item = current.value?.data
-  if (type && mediaTypes.includes(type)) {
-    deleteItem(type, item)
-  } else {
-    openModal(DeleteFileConfirm, {
-      files: [item],
-      onDone: () => {
-        emitter.emit('file_deleted', { paths: [item.path] })
-      },
-    })
-  }
-}
-
-function renameFile() {
-  const item = current.value?.data
-  if (!item || !current.value?.path) return
-
-  renameItem.value = {
-    id: item.id,
-    path: current.value.path,
-    name: getFileName(current.value.path),
-    size: current.value.size || 0,
-    isDir: false,
-    extension: '',
-    fileId: '',
-    updatedAt: '',
-    createdAt: ''
-  }
-
-  openModal(EditValueModal, {
-    title: t('rename'),
-    placeholder: t('name'),
-    value: getFileName(current.value.path),
-    mutation: renameMutation,
-    getVariables: renameVariables,
-    done: (newName: string) => {
-      renameDone(newName)
-      // Update current file name
-      if (current.value) {
-        const oldPath = current.value.path
-        const newPath = oldPath.substring(0, oldPath.lastIndexOf('/') + 1) + newName
-
-        // Emit file rename event to notify other components to refresh data
-        emitter.emit('file_renamed', {
-          oldPath,
-          newPath,
-          item: {
-            ...current.value.data,
-            path: newPath,
-            name: newName
-          }
-        })
-
-        current.value.path = newPath
-        current.value.name = newName
-      }
-    },
-  })
-}
-
 const {
   loading: infoLoading,
   load: loadInfo,
@@ -259,6 +187,13 @@ const {
     id: current.value?.data?.id ?? '',
     path: current.value?.path ?? '',
   }),
+})
+
+const { downloadFile, deleteFile, renameFile } = useLightboxFileActions({
+  current,
+  urlTokenKey,
+  t,
+  refetchInfo,
 })
 
 function updateViewOriginImageState() {
@@ -311,6 +246,7 @@ const closeDialog = () => {
   tempStore.lightbox.visible = false
   tempStore.lightbox.index = -1
   imgIndex.value = 0
+  preloader.clear()
 }
 
 const reset = () => {
@@ -324,6 +260,34 @@ const reset = () => {
   status.gesturing = false
   status.loading = true
 }
+
+function ensureSourceURL(s: ISource) {
+  if (!s.src) {
+    s.src = getFileUrlByPath(tempStore.urlTokenKey, s.path)
+  }
+
+  // Apply the same default-origin heuristic, but never override user choice.
+  if (s.viewOriginImage === undefined && shouldUseOriginImageByDefault(s)) {
+    s.viewOriginImage = true
+  }
+}
+
+function imageDisplayURL(s: ISource): string | null {
+  if (!s) return null
+  if (!isImage(s.name)) return null
+  ensureSourceURL(s)
+  if (!s.src) return null
+  return s.src + (s.viewOriginImage ? '' : '&w=1024&h=1024&cc=false')
+}
+
+const preloader = createAroundPreloader<ISource>({
+  getItems: () => tempStore.lightbox.sources,
+  getUrl: (s) => imageDisplayURL(s),
+  loop: () => props.loop,
+  ahead: 3,
+  behind: 1,
+  maxUrls: 60,
+})
 
 // switching imgs manually
 const changeIndex = async (newIndex: number, actions?: IndexChangeActions) => {
@@ -344,6 +308,10 @@ const changeIndex = async (newIndex: number, actions?: IndexChangeActions) => {
 
   imgIndex.value = newIndex
   current.value = tempStore.lightbox.sources[imgIndex.value]
+
+  // Preload neighbors ASAP (thumb generation can be slow on first hit).
+  preloader.preloadAround(newIndex)
+
   setTimeout(() => {
     const type = current.value?.type ?? ''
     if (type && !tagsMap.has(type)) {
@@ -535,6 +503,14 @@ watch(
     }
     changeIndex(newIndex)
   }
+)
+
+watch(
+  () => tempStore.lightbox.sources,
+  () => {
+    preloader.clear()
+  },
+  { deep: false }
 )
 
 watch(

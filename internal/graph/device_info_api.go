@@ -21,6 +21,19 @@ func buildDeviceInfo() (*model.DeviceInfo, error) {
 	kernel := charsToString(uts.Release)
 	cpuThreads := runtime.NumCPU()
 
+	readTrimmedFile := func(path string) string {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return ""
+		}
+		// sysfs/device-tree strings can contain trailing NULs
+		s := strings.TrimSpace(strings.TrimRight(string(b), "\x00"))
+		if s == "" || s == "Default string" {
+			return ""
+		}
+		return s
+	}
+
 	var l1, l5, l15 float64
 	if data, err := os.ReadFile("/proc/loadavg"); err == nil {
 		parts := strings.Fields(string(data))
@@ -128,12 +141,27 @@ func buildDeviceInfo() (*model.DeviceInfo, error) {
 	}
 
 	modelName := ""
-	if data, err := os.ReadFile("/proc/device-tree/model"); err == nil {
-		modelName = strings.TrimSpace(string(data))
+	// Prefer DMI on x86/servers (matches `dmidecode -t system` Product Name)
+	for _, p := range []string{
+		"/sys/class/dmi/id/product_name",
+		"/sys/devices/virtual/dmi/id/product_name",
+		"/sys/class/dmi/id/board_name",
+		"/sys/devices/virtual/dmi/id/board_name",
+	} {
+		if v := readTrimmedFile(p); v != "" {
+			modelName = v
+			break
+		}
+	}
+	// Fallback to device-tree on ARM/SBC platforms
+	if modelName == "" {
+		if v := readTrimmedFile("/proc/device-tree/model"); v != "" {
+			modelName = v
+		}
 	}
 	if modelName == "" {
-		if data, err := os.ReadFile("/proc/device-tree/compatible"); err == nil {
-			parts := strings.SplitN(strings.TrimSpace(string(data)), ",", 2)
+		if v := readTrimmedFile("/proc/device-tree/compatible"); v != "" {
+			parts := strings.SplitN(v, ",", 2)
 			if len(parts) > 0 {
 				modelName = parts[0]
 			}

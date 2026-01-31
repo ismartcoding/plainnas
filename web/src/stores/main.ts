@@ -11,6 +11,7 @@ export type MainState = {
   lightboxInfoVisible: boolean
   videosCardView: boolean
   imagesCardView: boolean
+  pageUIMode: Record<string, 'view' | 'edit'>
   fileSortBy: string
   imageSortBy: string
   videoSortBy: string
@@ -32,6 +33,7 @@ export const useMainStore = defineStore('main', {
       lightboxInfoVisible: false,
       videosCardView: false,
       imagesCardView: false,
+      pageUIMode: {},
       fileSortBy: 'NAME_ASC',
       imageSortBy: 'DATE_DESC',
       videoSortBy: 'DATE_DESC',

@@ -10,6 +10,9 @@ const (
 	EVENT_MEDIA_SCAN_PROGRESS = "media:scan:progress"
 	EVENT_FILE_TASK_PROGRESS  = "file:task:progress"
 
+	EVENT_DLNA_RENDERER_FOUND  = "dlna:renderer:found"
+	EVENT_DLNA_DISCOVERY_DONE  = "dlna:discovery:done"
+
 	// Indexing and scanning performance constants
 	SCAN_YIELD_EVERY_N   = 500
 	SCAN_YIELD_MS        = 5

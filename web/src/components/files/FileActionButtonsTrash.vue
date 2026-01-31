@@ -6,49 +6,20 @@
     <v-icon-button v-tooltip="$t('restore')" class="sm" @click.stop="restoreItem(item)">
       <i-material-symbols:restore-from-trash-outline-rounded />
     </v-icon-button>
-    <template v-if="item.isDir">
-      <v-icon-button v-tooltip="$t('download')" class="sm" @click.stop="downloadDir(item.path)">
-          <i-material-symbols:download-rounded />
-      </v-icon-button>
-    </template>
-    <template v-else>
-      <v-icon-button v-tooltip="$t('download')" class="sm" @click.stop="downloadFile(item.path)">
-          <i-material-symbols:download-rounded />
-      </v-icon-button>
-    </template>
-
-    <v-dropdown v-model="infoMenuVisible">
-      <template #trigger>
-        <v-icon-button v-tooltip="$t('info')" class="sm">
-            <i-material-symbols:info-outline-rounded />
-        </v-icon-button>
-      </template>
-      <section class="card card-info">
-        <div class="key-value vertical">
-          <div class="key">{{ $t('path') }}</div>
-          <div class="value">
-            {{ item.path }}
-          </div>
-        </div>
-      </section>
-    </v-dropdown>
-
-    <v-dropdown v-model="actionsMenuVisible">
-      <template #trigger>
-        <v-icon-button v-tooltip="$t('actions')" class="sm">
-            <i-material-symbols:more-vert />
-        </v-icon-button>
-      </template>
-      <div v-if="!item.isDir" class="dropdown-item" @click.stop="copyLink(item); actionsMenuVisible = false">
-        {{ $t('copy_link') }}
-      </div>
-    </v-dropdown>
+    <v-icon-button v-tooltip="$t('download')" class="sm" @click.stop="downloadItem(item)">
+        <i-material-symbols:download-rounded />
+    </v-icon-button>
+    <v-icon-button v-tooltip="$t('info')" class="sm" @click.stop="openInfo(item)">
+        <i-material-symbols:info-outline-rounded />
+    </v-icon-button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { IFile } from '@/lib/file'
+import { openModal } from '@/components/modal'
+import FileInfoModal from '@/components/files/FileInfoModal.vue'
 
 interface Props {
   item: IFile
@@ -91,8 +62,8 @@ function downloadItem(item: IFile) {
   }
 }
 
-function copyLink(item: IFile) {
-  emit('copyLink', item)
+function openInfo(item: IFile) {
+  openModal(FileInfoModal, { item })
 }
 
 </script>

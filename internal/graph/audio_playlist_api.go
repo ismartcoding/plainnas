@@ -21,12 +21,9 @@ func addPlaylistAudios(query string) (bool, error) {
 		if _, ok := existing[p]; ok {
 			continue
 		}
-		playlist = append(playlist, model.PlaylistAudio{
-			Title:    filepath.Base(p),
-			Artist:   "",
-			Path:     p,
-			Duration: f.DurationSec,
-		})
+		mf := f
+		mf.Path = p
+		playlist = append(playlist, helpers.PlaylistAudioFromMediaFile(&mf))
 		existing[p] = struct{}{}
 	}
 	_ = helpers.SaveAudioPlaylist(playlist)
@@ -62,15 +59,7 @@ func reorderPlaylistAudios(paths []string) (bool, error) {
 
 func playAudio(path string) (*model.PlaylistAudio, error) {
 	p := filepath.ToSlash(path)
-	dur := 0
-	if uuid, _ := media.FindByPath(p); uuid != "" {
-		if mf, err := media.GetFile(uuid); err == nil && mf != nil {
-			if mf.DurationSec <= 0 {
-				_, _ = media.EnsureDuration(mf)
-			}
-			dur = mf.DurationSec
-		}
-	}
+	pa := helpers.PlaylistAudioFromPath(p)
 	playlist := helpers.LoadAudioPlaylist()
 	found := false
 	for _, it := range playlist {
@@ -80,17 +69,12 @@ func playAudio(path string) (*model.PlaylistAudio, error) {
 		}
 	}
 	if !found {
-		playlist = append(playlist, model.PlaylistAudio{
-			Title:    filepath.Base(p),
-			Artist:   "",
-			Path:     p,
-			Duration: dur,
-		})
+		playlist = append(playlist, pa)
 		_ = helpers.SaveAudioPlaylist(playlist)
 	}
 	_ = helpers.SaveAudioCurrent(p)
-	out := &model.PlaylistAudio{Title: filepath.Base(p), Artist: "", Path: p, Duration: dur}
-	return out, nil
+	out := pa
+	return &out, nil
 }
 
 func updateAudioPlayMode(mode model.MediaPlayMode) (bool, error) {

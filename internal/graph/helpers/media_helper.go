@@ -25,6 +25,8 @@ type mediaFileItem struct {
 	name     string
 	bucketID string
 	duration int
+	artist   string
+	title    string
 }
 
 type mediaQueryFilters struct {
@@ -184,6 +186,14 @@ func scanMedia(offset int, limit int, query string, sortBy model.FileSortBy, med
 					if (mediaType == "audio" || mediaType == "video") && mf.DurationSec <= 0 {
 						_, _ = media.EnsureDuration(mf)
 					}
+					// Best-effort: only probe artist for the items we actually return.
+					if mediaType == "audio" && mf.Artist == "" {
+						_, _ = media.EnsureArtist(mf)
+					}
+					// Best-effort: only probe title for the items we actually return.
+					if mediaType == "audio" && mf.Title == "" {
+						_, _ = media.EnsureTitle(mf)
+					}
 					// Enforce trash filter defensively (should be implied by index).
 					if trashOnly && !mf.IsTrash {
 						return nil
@@ -204,7 +214,7 @@ func scanMedia(offset int, limit int, query string, sortBy model.FileSortBy, med
 						skipped++
 						return nil
 					}
-					files = append(files, mediaFileItem{id: mf.UUID, path: filepath.ToSlash(mf.Path), size: mf.Size, mod: mf.ModifiedAt, name: mf.Name, bucketID: bID, duration: mf.DurationSec})
+					files = append(files, mediaFileItem{id: mf.UUID, path: filepath.ToSlash(mf.Path), size: mf.Size, mod: mf.ModifiedAt, name: mf.Name, bucketID: bID, duration: mf.DurationSec, artist: mf.Artist, title: mf.Title})
 					if len(files) >= limit {
 						return db.ErrIterateStop
 					}
@@ -285,7 +295,7 @@ func scanMedia(offset int, limit int, query string, sortBy model.FileSortBy, med
 				continue
 			}
 		}
-		files = append(files, mediaFileItem{id: it.UUID, path: filepath.ToSlash(it.Path), size: it.Size, mod: it.ModifiedAt, name: it.Name, bucketID: bID, duration: it.DurationSec})
+		files = append(files, mediaFileItem{id: it.UUID, path: filepath.ToSlash(it.Path), size: it.Size, mod: it.ModifiedAt, name: it.Name, bucketID: bID, duration: it.DurationSec, artist: it.Artist, title: it.Title})
 	}
 
 	switch sortBy {
@@ -314,9 +324,6 @@ func scanMedia(offset int, limit int, query string, sortBy model.FileSortBy, med
 	// Best-effort probe for the final paginated items only.
 	if mediaType == "audio" || mediaType == "video" {
 		for i := range files {
-			if files[i].duration > 0 {
-				continue
-			}
 			mf, err := media.GetFile(files[i].id)
 			if err != nil || mf == nil {
 				continue
@@ -325,6 +332,16 @@ func scanMedia(offset int, limit int, query string, sortBy model.FileSortBy, med
 				_, _ = media.EnsureDuration(mf)
 			}
 			files[i].duration = mf.DurationSec
+			if mediaType == "audio" {
+				if mf.Artist == "" {
+					_, _ = media.EnsureArtist(mf)
+				}
+				files[i].artist = mf.Artist
+				if mf.Title == "" {
+					_, _ = media.EnsureTitle(mf)
+				}
+				files[i].title = mf.Title
+			}
 		}
 	}
 	return files, nil
@@ -604,6 +621,16 @@ func ScanAudios(offset int, limit int, query string, sortBy model.FileSortBy) ([
 	tagsByKey, _ := TagHelperInstance.GetTagsByKeys(ids, model.DataTypeAudio)
 	out := make([]*model.Audio, 0, len(files))
 	for _, f := range files {
+		title := f.title
+		if title == "" {
+			base := filepath.Base(f.path)
+			noExt := strings.TrimSuffix(base, filepath.Ext(base))
+			if noExt != "" {
+				title = noExt
+			} else {
+				title = base
+			}
+		}
 		// Generate encrypted file ID for album art (use the audio file itself as fallback)
 		albumFileID := GenerateEncryptedFileID(f.path)
 		if albumFileID == "" {
@@ -617,8 +644,8 @@ func ScanAudios(offset int, limit int, query string, sortBy model.FileSortBy) ([
 
 		out = append(out, &model.Audio{
 			ID:          f.id,
-			Title:       filepath.Base(f.path),
-			Artist:      "",
+			Title:       title,
+			Artist:      f.artist,
 			Path:        filepath.ToSlash(f.path),
 			Duration:    f.duration,
 			Size:        f.size,

@@ -14,7 +14,7 @@
       <div class="skeleton-text" style="width: 30%"></div>
     </div>
     <div class="actions">
-      <div class="skeleton-text lg" style="width: 240px"></div>
+      <div class="skeleton-text lg" style="width: 200px"></div>
     </div>
   </section>
 

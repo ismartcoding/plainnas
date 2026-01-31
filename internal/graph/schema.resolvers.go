@@ -77,6 +77,11 @@ func (r *mutationResolver) CreateDir(ctx context.Context, path string) (*model.F
 	return createDirModel(ctx, path)
 }
 
+// WriteTextFile is the resolver for the writeTextFile field.
+func (r *mutationResolver) WriteTextFile(ctx context.Context, path string, content string, overwrite bool) (*model.File, error) {
+	return writeTextFileModel(ctx, path, content, overwrite)
+}
+
 // RenameFile is the resolver for the renameFile field.
 func (r *mutationResolver) RenameFile(ctx context.Context, path string, name string) (bool, error) {
 	return renameFileModel(ctx, path, name)
@@ -249,6 +254,11 @@ func (r *mutationResolver) FormatDisk(ctx context.Context, path string) (bool, e
 	return formatDisk(ctx, path)
 }
 
+// DlnaCast is the resolver for the dlnaCast field.
+func (r *mutationResolver) DlnaCast(ctx context.Context, rendererUdn string, url string, title string, mime string, typeArg model.DataType) (bool, error) {
+	return dlnaCastModel(ctx, rendererUdn, url, title, mime, typeArg)
+}
+
 // App is the resolver for the app field.
 func (r *queryResolver) App(ctx context.Context) (*model.App, error) {
 	return app(ctx)
@@ -372,6 +382,11 @@ func (r *queryResolver) Files(ctx context.Context, offset int, limit int, query 
 	return files(offset, limit, query, sortBy)
 }
 
+// FilesCount is the resolver for the filesCount field.
+func (r *queryResolver) FilesCount(ctx context.Context, query string) (int, error) {
+	return filesCount(query)
+}
+
 // RecentFiles is the resolver for the recentFiles field.
 func (r *queryResolver) RecentFiles(ctx context.Context) ([]*model.File, error) {
 	return recentFiles()
@@ -385,6 +400,11 @@ func (r *queryResolver) TrashCount(ctx context.Context) (int, error) {
 // UploadedChunks is the resolver for the uploadedChunks field.
 func (r *queryResolver) UploadedChunks(ctx context.Context, fileID string) ([]int, error) {
 	return uploadedChunks(fileID)
+}
+
+// DlnaRenderers is the resolver for the dlnaRenderers field.
+func (r *queryResolver) DlnaRenderers(ctx context.Context) ([]*model.DlnaRenderer, error) {
+	return dlnaRenderersModel(ctx)
 }
 
 // Mutation returns generated.MutationResolver implementation.

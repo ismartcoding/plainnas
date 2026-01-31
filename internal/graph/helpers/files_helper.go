@@ -15,7 +15,7 @@ import (
 const (
 	// dirChildrenThreshold is a hard cap for directory Children count.
 	// If the real count exceeds this value, we return this value.
-	dirChildrenThreshold = 10000
+	dirChildrenThreshold = 20000
 	// getdents buffer size (8KB-32KB tends to be a good range).
 	getdentsBufferSize = 32768
 )
@@ -71,6 +71,61 @@ func countDirEntriesFast(path string, threshold int) (count int, fuzzy bool, err
 	return count, false, nil
 }
 
+// countDirEntriesExact counts directory entries using getdents(2).
+// It skips "." and ".." and optionally skips dotfiles when showHidden is false.
+func countDirEntriesExact(path string, showHidden bool) (int, error) {
+	fd, err := syscall.Open(path, syscall.O_RDONLY|syscall.O_DIRECTORY, 0)
+	if err != nil {
+		return 0, err
+	}
+	defer syscall.Close(fd)
+
+	buf := make([]byte, getdentsBufferSize)
+	count := 0
+	for {
+		n, e := syscall.Getdents(fd, buf)
+		if e != nil {
+			return 0, e
+		}
+		if n == 0 {
+			break
+		}
+		pos := 0
+		for pos < n {
+			dirent := (*syscall.Dirent)(unsafe.Pointer(&buf[pos]))
+			reclen := int(dirent.Reclen)
+			if reclen <= 0 {
+				return count, syscall.EIO
+			}
+			pos += reclen
+			if dirent.Ino == 0 {
+				continue
+			}
+
+			if dirent.Name[0] == '.' {
+				// Always skip "." and "..".
+				if dirent.Name[1] == 0 || (dirent.Name[1] == '.' && dirent.Name[2] == 0) {
+					continue
+				}
+				// Optionally skip dotfiles.
+				if !showHidden {
+					continue
+				}
+			}
+
+			count++
+		}
+	}
+
+	return count, nil
+}
+
+// CountDirEntries returns the exact number of directory entries.
+// Returns 0 when the directory cannot be read.
+func CountDirEntries(path string, showHidden bool) (int, error) {
+	return countDirEntriesExact(path, showHidden)
+}
+
 func ListFiles(dir string, showHidden bool) []*model.File {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -90,6 +145,72 @@ func ListFiles(dir string, showHidden bool) []*model.File {
 		files = append(files, FileInfoToModel(full, info, e.IsDir()))
 	}
 	return files
+}
+
+// ListFilesPaged lists directory entries with offset/limit applied after sorting.
+// For NAME_* sorts it avoids calling Stat for every entry (critical for huge dirs)
+// by sorting using DirEntry metadata, then materializing only the requested page.
+// For DATE_* and SIZE_* callers should fall back to ListFiles+SortFiles (global sort
+// requires stat across all entries).
+func ListFilesPaged(dir string, showHidden bool, offset int, limit int, sortBy model.FileSortBy) []*model.File {
+	if offset < 0 {
+		offset = 0
+	}
+	if limit <= 0 {
+		limit = 1000
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return []*model.File{}
+	}
+
+	type ent struct {
+		name string
+		isDir bool
+		de   os.DirEntry
+	}
+
+	list := make([]ent, 0, len(entries))
+	for _, e := range entries {
+		name := e.Name()
+		if !showHidden && strings.HasPrefix(name, ".") {
+			continue
+		}
+		list = append(list, ent{name: name, isDir: e.IsDir(), de: e})
+	}
+
+	// Sort directories first, then by name.
+	sort.SliceStable(list, func(i, j int) bool {
+		if list[i].isDir != list[j].isDir {
+			return list[i].isDir && !list[j].isDir
+		}
+	a := strings.ToLower(list[i].name)
+	b := strings.ToLower(list[j].name)
+		if sortBy == model.FileSortByNameDesc {
+			return a > b
+		}
+		return a < b
+	})
+
+	if offset >= len(list) {
+		return []*model.File{}
+	}
+	end := offset + limit
+	if end > len(list) {
+		end = len(list)
+	}
+
+	out := make([]*model.File, 0, end-offset)
+	for _, e := range list[offset:end] {
+		full := filepath.Join(dir, e.name)
+		info, err := e.de.Info()
+		if err != nil {
+			continue
+		}
+		out = append(out, FileInfoToModel(full, info, e.isDir))
+	}
+	return out
 }
 
 func SearchFiles(text string, root string, showHidden bool) []*model.File {

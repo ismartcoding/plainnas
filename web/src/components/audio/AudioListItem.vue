@@ -28,6 +28,7 @@
       :item="item"
       :filter="filter"
       :data-type="dataType"
+      :edit-mode="editMode"
       :animating-ids="animatingIds"
       :play-loading="playLoading"
       :play-path="playPath"
@@ -92,6 +93,7 @@
         :item="item"
         :filter="filter"
         :data-type="dataType"
+        :edit-mode="editMode"
         :animating-ids="animatingIds"
         :play-loading="playLoading"
         :play-path="playPath"
@@ -126,6 +128,7 @@ interface Props {
   shiftEffectingIds: string[]
   shouldSelect: boolean
   isPhone: boolean
+  editMode: boolean
   imageErrorIds: string[]
   bucketsMap: Record<string, IBucket>
   filter: IFilter

@@ -101,6 +101,14 @@ export interface IVideoItem extends IVideo {
   fileId: string
 }
 
+export interface IDlnaRenderer {
+  udn: string
+  name: string
+  manufacturer?: string
+  modelName?: string
+  location: string
+}
+
 // Storage mount entry used across the UI.
 // - For mounted volumes: mountPoint is present and usedBytes/freeBytes are populated.
 // - For disk partitions: path is present; mountPoint/fsType may be missing; totalBytes is the partition size.
@@ -125,10 +133,11 @@ export interface IStorageMount {
   alias?: string
   remote?: boolean
   driveType?: string
-  parentDevice?: string
+  diskID?: string
 }
 
 export interface IStorageDisk {
+  id: string
   name: string
   path: string
   sizeBytes: number
@@ -195,6 +204,7 @@ export interface IScanProgress {
 
 export interface IApp {
   urlToken: string
+  docPreviewAvailable?: boolean
   httpPort: number
   httpsPort: number
   audios: IPlaylistAudio[]

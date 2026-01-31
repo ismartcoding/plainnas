@@ -15,6 +15,19 @@ func installAllDeps() {
 	installAvahi()
 }
 
+func installLibreOffice() {
+	ensureInstalled(installPlan{
+		name:           "DOC/DOCX preview (LibreOffice)",
+		presentAny:     []string{"soffice", "libreoffice"},
+		aptPkg:         "libreoffice",
+		dnfPkg:         "libreoffice",
+		yumPkg:         "libreoffice",
+		pacmanPkg:      "libreoffice-fresh",
+		apkPkg:         "libreoffice",
+		noSupportedMsg: "Couldn't detect a supported package manager to install LibreOffice.",
+	})
+}
+
 func installAvahi() {
 	ensureInstalled(installPlan{
 		name:           "Local name discovery (.local)",

@@ -7,17 +7,27 @@ import (
 
 // MediaFile represents a file entry stored in Pebble.
 type MediaFile struct {
-	UUID  string `json:"uuid"`
+	UUID string `json:"uuid"`
 	// FSUUID is a stable filesystem identifier (typically the filesystem UUID).
 	// It is used (together with inode+ctime) for identity and UUID generation.
 	FSUUID string `json:"fsuuid"`
-	Ino   uint64 `json:"ino"`
-	Ctime int64  `json:"ctime"`
+	Ino    uint64 `json:"ino"`
+	Ctime  int64  `json:"ctime"`
 	// Media metadata (best-effort). DurationSec is cached duration in seconds.
 	// Duration is considered valid when DurationRefMod/DurationRefSize match current file metadata.
 	DurationSec     int   `json:"duration_sec"`
 	DurationRefMod  int64 `json:"duration_ref_mod"`
 	DurationRefSize int64 `json:"duration_ref_size"`
+	// Artist is best-effort extracted from audio tags. It is considered valid when
+	// ArtistRefMod/ArtistRefSize match current file metadata.
+	Artist        string `json:"artist"`
+	ArtistRefMod  int64  `json:"artist_ref_mod"`
+	ArtistRefSize int64  `json:"artist_ref_size"`
+	// Title is best-effort extracted from audio tags. It is considered valid when
+	// TitleRefMod/TitleRefSize match current file metadata.
+	Title        string `json:"title"`
+	TitleRefMod  int64  `json:"title_ref_mod"`
+	TitleRefSize int64  `json:"title_ref_size"`
 	// Path is the current physical file path. When trashed, it points to the trash location.
 	Path string `json:"path"`
 	// OriginalPath preserves the original file path before moving to trash.

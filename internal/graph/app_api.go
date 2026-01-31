@@ -8,6 +8,7 @@ import (
 	"ismartcoding/plainnas/internal/config"
 	"ismartcoding/plainnas/internal/consts"
 	"ismartcoding/plainnas/internal/db"
+	plainfs "ismartcoding/plainnas/internal/fs"
 	"ismartcoding/plainnas/internal/graph/helpers"
 	"ismartcoding/plainnas/internal/graph/model"
 	"ismartcoding/plainnas/internal/media"
@@ -45,6 +46,7 @@ func app(_ context.Context) (*model.App, error) {
 
 	return &model.App{
 		URLToken:     urlToken,
+		DocPreviewAvailable: plainfs.LibreOfficeAvailable(),
 		HTTPPort:     config.GetDefault().GetInt("graphql.http_port"),
 		HTTPSPort:    config.GetDefault().GetInt("graphql.https_port"),
 		Audios:       playlist,

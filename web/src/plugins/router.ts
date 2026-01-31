@@ -5,7 +5,7 @@ import type { MainState } from '@/stores/main'
 const router = createRouter({
   strict: true,
   history: createWebHistory(),
-  scrollBehavior(to: string, from: string, savedPosition: { top: number } | null) {
+  scrollBehavior(_to, _from, savedPosition) {
     if (savedPosition) {
       return savedPosition
     } else {
@@ -149,6 +149,12 @@ const router = createRouter({
       path: '/text-file',
       component: () => import('@/views/TextFileView.vue'),
       meta: { requiresAuth: false },
+    },
+    {
+      name: 'text-edit',
+      path: '/text-edit',
+      component: () => import('@/views/TextFileView.vue'),
+      meta: { requiresAuth: true },
     },
   ],
 })

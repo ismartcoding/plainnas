@@ -40,9 +40,9 @@
       </div>
       <div class="card-body">
         <div v-if="eventParts(e).length" class="hint event-hint">
-          <template v-for="(p, idx) in eventParts(e)" :key="idx">
+          <template v-for="(p, idx2) in eventParts(e)" :key="idx2">
             <span>{{ p }}</span>
-            <span v-if="idx < eventParts(e).length - 1">·</span>
+            <span v-if="idx2 < eventParts(e).length - 1">·</span>
           </template>
         </div>
       </div>

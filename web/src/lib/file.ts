@@ -22,6 +22,21 @@ export function isTextFile(name: string) {
   return ['.txt', '.md', '.markdown', '.json', '.xml', '.css', '.js', '.ts', '.html', '.yml', '.yaml', '.ini', '.conf', '.log'].some((it) => v.endsWith(it))
 }
 
+export function isWordDoc(name: string) {
+  const v = name.toLowerCase()
+  return v.endsWith('.doc') || v.endsWith('.docx')
+}
+
+export function isExcelDoc(name: string) {
+  const v = name.toLowerCase()
+  return v.endsWith('.xls') || v.endsWith('.xlsx')
+}
+
+export function isPPTDoc(name: string) {
+  const v = name.toLowerCase()
+  return v.endsWith('.ppt') || v.endsWith('.pptx')
+}
+
 export function isImage(name: string) {
   const v = name.toLowerCase()
   return photoExtensions.some((it) => v.endsWith(it))
@@ -53,6 +68,10 @@ export function canView(name: string) {
 
 export function canOpenInBrowser(name: string) {
   return ['.txt', '.pdf', '.md'].some((it) => name.endsWith(it))
+}
+
+export function canPreviewAsPdf(name: string) {
+  return isWordDoc(name) || isExcelDoc(name) || isPPTDoc(name)
 }
 
 export function getSortItems() {

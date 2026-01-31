@@ -16,8 +16,8 @@
               <span>{{ item.value }}</span>
               <v-outlined-button
                 v-if="appUpdate?.hasUpdate"
-                class="btn-sm"
                 v-tooltip="upgradeTooltip"
+                class="btn-sm"
                 @click="openUpgrade">
                 {{ $t('upgrade') }}
               </v-outlined-button>

@@ -28,22 +28,9 @@
       <v-icon-button v-tooltip="$t('download')" @click.stop="downloadFile(item.path)">
         <i-material-symbols:download-rounded />
       </v-icon-button>
-
-      <popper>
-        <v-icon-button v-tooltip="$t('info')">
+      <v-icon-button v-tooltip="$t('info')" class="sm" @click.stop="openInfo(item)">
           <i-material-symbols:info-outline-rounded />
-        </v-icon-button>
-        <template #content>
-          <section class="card card-info">
-            <div class="key-value vertical">
-              <div class="key">{{ $t('path') }}</div>
-              <div class="value">
-                {{ item.path }}
-              </div>
-            </div>
-          </section>
-        </template>
-      </popper>
+      </v-icon-button>
     </div>
   </section>
 
@@ -104,6 +91,8 @@ import type { IFile } from '@/lib/file'
 import { formatFileSize, formatDateTime, formatTimeAgo } from '@/lib/format'
 import { getFileUrl } from '@/lib/api/file'
 import { getTrashDisplayName } from '@/lib/trash'
+import { openModal } from '@/components/modal'
+import FileInfoModal from '@/components/files/FileInfoModal.vue'
 
 interface Props {
   item: IFile
@@ -125,6 +114,10 @@ interface Props {
 }
 
 defineProps<Props>()
+
+function openInfo(item: IFile) {
+  openModal(FileInfoModal, { item })
+}
 </script>
 
 <style scoped lang="scss">

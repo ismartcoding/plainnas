@@ -21,9 +21,11 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	rootCmd.AddCommand(installCmd)
+	rootCmd.AddCommand(uninstallCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(resetPwdCmd)
 	rootCmd.AddCommand(updateCmd)
+	rootCmd.AddCommand(benchCmd)
 	rootCmd.Flags().BoolP("version", "v", false, "version")
 
 	rootCmd.Execute()

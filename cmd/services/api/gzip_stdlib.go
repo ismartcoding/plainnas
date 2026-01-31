@@ -20,7 +20,7 @@ func defaultGzipConfig() gzipConfig {
 	return gzipConfig{
 		Level:   gzip.BestSpeed,
 		MinSize: 1024,
-		Exclude: []string{"/ws", "/fs", "/upload", "/upload_chunk"},
+		Exclude: []string{"/ws", "/fs", "/zip", "/upload", "/upload_chunk"},
 	}
 }
 

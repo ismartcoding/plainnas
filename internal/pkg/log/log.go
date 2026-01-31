@@ -53,7 +53,7 @@ func Panicf(format string, v ...any) {
 }
 
 func Init(level string) {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "3:04:05PM"})
 	if l, err := zerolog.ParseLevel(level); err == nil {
 		zerolog.SetGlobalLevel(l)
 	}

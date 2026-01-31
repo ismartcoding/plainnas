@@ -14,14 +14,15 @@ type FileInfoData interface {
 }
 
 type App struct {
-	URLToken     string           `json:"urlToken"`
-	HTTPPort     int              `json:"httpPort"`
-	HTTPSPort    int              `json:"httpsPort"`
-	Audios       []*PlaylistAudio `json:"audios"`
-	AudioCurrent string           `json:"audioCurrent"`
-	AudioMode    string           `json:"audioMode"`
-	DataDir      string           `json:"dataDir"`
-	ScanProgress *ScanProgress    `json:"scanProgress"`
+	URLToken            string           `json:"urlToken"`
+	DocPreviewAvailable bool             `json:"docPreviewAvailable"`
+	HTTPPort            int              `json:"httpPort"`
+	HTTPSPort           int              `json:"httpsPort"`
+	Audios              []*PlaylistAudio `json:"audios"`
+	AudioCurrent        string           `json:"audioCurrent"`
+	AudioMode           string           `json:"audioMode"`
+	DataDir             string           `json:"dataDir"`
+	ScanProgress        *ScanProgress    `json:"scanProgress"`
 }
 
 type AppUpdate struct {
@@ -75,6 +76,14 @@ type DeviceInfo struct {
 	Ips              []string   `json:"ips"`
 	Nics             []*NicInfo `json:"nics"`
 	Model            string     `json:"model"`
+}
+
+type DlnaRenderer struct {
+	Udn          string  `json:"udn"`
+	Name         string  `json:"name"`
+	Manufacturer *string `json:"manufacturer,omitempty"`
+	ModelName    *string `json:"modelName,omitempty"`
+	Location     string  `json:"location"`
 }
 
 type Event struct {
@@ -240,6 +249,7 @@ type Session struct {
 }
 
 type StorageDisk struct {
+	ID        string  `json:"id"`
 	Name      string  `json:"name"`
 	Path      string  `json:"path"`
 	SizeBytes int64   `json:"sizeBytes"`
@@ -262,7 +272,7 @@ type StorageMount struct {
 	Alias        *string `json:"alias,omitempty"`
 	Remote       bool    `json:"remote"`
 	DriveType    *string `json:"driveType,omitempty"`
-	ParentDevice *string `json:"parentDevice,omitempty"`
+	DiskID       *string `json:"diskID,omitempty"`
 }
 
 type Tag struct {

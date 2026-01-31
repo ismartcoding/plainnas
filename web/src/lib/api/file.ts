@@ -22,11 +22,25 @@ export function getFileUrl(id: string, query: string = '') {
   return `${getApiBaseUrl()}/fs?id=${encodeURIComponent(id)}${query}`
 }
 
+export function getPdfPreviewUrl(id: string) {
+  if (notId(id)) {
+    return id
+  }
+  return getFileUrl(id, '&preview=pdf')
+}
+
 export function getFileUrlByPath(key: sjcl.BitArray | null, path: string) {
   if (!path || !key) {
     return ''
   }
   return getFileUrl(getFileId(key, path))
+}
+
+export function getPdfPreviewUrlByPath(key: sjcl.BitArray | null, path: string) {
+  if (!path || !key) {
+    return ''
+  }
+  return getPdfPreviewUrl(getFileId(key, path))
 }
 
 export function download(url: string, name: string) {

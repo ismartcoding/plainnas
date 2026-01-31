@@ -14,9 +14,6 @@
             <i-lucide:trash />
           </span>
           <span class="title">{{ $t('trash') }}</span>
-          <v-icon-button v-tooltip="$t('trash_tips')" class="btn-help sm">
-            <i-material-symbols:help-outline-rounded />
-          </v-icon-button>
           <span v-if="totalTrash >= 0" class="count">{{ totalTrash.toLocaleString() }}</span>
         </li>
       </ul>
